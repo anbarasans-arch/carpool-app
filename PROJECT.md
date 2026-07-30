@@ -104,12 +104,15 @@ matches
 - [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel
       at https://carpool-app-mu.vercel.app, auth flow confirmed live in browser
 
-**Phase 1 — Core loop (several sessions)**
-- Driver can post a trip (origin, destination, time, seats) via a form + map picker
-- Rider can search/request a ride within their time window
-- Basic matching: server-side query returns candidate trips within radius + time window
-- Match confirmation flow, reveal contact info once both sides confirm
-- Suggested cost-split calculation displayed
+**Phase 1 — Core loop (several sessions) - IN PROGRESS (started 2026-07-30)**
+- [x] Driver can post a trip (origin, destination, time, seats) via a form + map picker.
+      LocationPicker component (address search via LocationIQ + MapLibre/MapTiler map,
+      click-to-place marker), PostTripScreen wires it to an insert into `trips`.
+      Verified end-to-end against the real DB, both locally and on the live Vercel site.
+- [ ] Rider can search/request a ride within their time window
+- [ ] Basic matching: server-side query returns candidate trips within radius + time window
+- [ ] Match confirmation flow, reveal contact info once both sides confirm
+- [ ] Suggested cost-split calculation displayed
 
 **Phase 2 — Polish for demo**
 - Trip history / "my rides" view

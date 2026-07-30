@@ -25,6 +25,22 @@ privacy items from the original spec - not repeated here.
       (TestFlight) starts, per `PROJECT.md`'s stack table. Not needed yet since we're
       web-first.
 
+## Known gaps (from Phase 1 work, 2026-07-30)
+
+- [ ] **LocationPicker (map picker) is web-only.** Native (iOS/Android) currently shows a
+      "Map picker is available on web for now" fallback text instead of a real picker.
+      MapLibre GL JS is a web/DOM library; native support needs a different package
+      (e.g. `@maplibre/maplibre-react-native`) - fine to defer since we're web-first, but
+      needs solving before the iOS/Android phase.
+- [ ] **MapLibre's worker script loads from unpkg's CDN at runtime**
+      (`maplibregl.setWorkerUrl(...)` in `components/LocationPicker.tsx`), worked around
+      because Metro's dev server (and possibly Expo's static web export too - not fully
+      confirmed for the export build, only spot-checked that the built bundle references
+      the right URL) doesn't serve maplibre-gl's own worker chunk correctly. This makes
+      the map picker depend on unpkg.com being reachable. Worth revisiting to self-host
+      the worker file (e.g. copy it into `assets/` and reference it locally) so the app
+      doesn't have a runtime dependency on a third-party CDN for a core feature.
+
 ## Product (explicitly deferred to Phase 2 in PROJECT.md)
 
 - [ ] Geofence validation - reject trip creation outside the 50mi Dallas radius, with a
