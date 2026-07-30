@@ -113,7 +113,11 @@ matches
       (mirrors PostTripScreen) inserts into `ride_requests` with an earliest/latest
       departure window. App.tsx has a simple tab switcher between the two flows.
       Verified end-to-end against the real DB.
-- [ ] Basic matching: server-side query returns candidate trips within radius + time window
+- [x] Basic matching: server-side query returns candidate trips within radius + time window.
+      `find_candidate_trips(request_id)` Postgres function (ST_DWithin, 5mi radius on both
+      origin and destination + time-window overlap), called via RPC right after a ride
+      request is submitted; RequestRideScreen shows the resulting candidates. Verified
+      end-to-end against the real DB.
 - [ ] Match confirmation flow, reveal contact info once both sides confirm
 - [ ] Suggested cost-split calculation displayed
 
