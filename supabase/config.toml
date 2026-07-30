@@ -237,14 +237,17 @@ otp_expiry = 3600
 
 # Custom SMTP via Resend - needed because the free-tier default mailer
 # doesn't allow customizing email templates (see magic_link template below).
+# admin_email is Resend's sandbox sender (onboarding@resend.dev) until a real
+# domain is verified with Resend - swap RESEND_SENDER_EMAIL in .env.local and
+# `supabase config push` once one is set up, no code change needed.
 [auth.email.smtp]
 enabled = true
 host = "smtp.resend.com"
 port = 587
 user = "resend"
 pass = "env(RESEND_SMTP_PASS)"
-admin_email = "onboarding@resend.dev"
-sender_name = "carpool-app"
+admin_email = "env(RESEND_SENDER_EMAIL)"
+sender_name = "env(RESEND_SENDER_NAME)"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
