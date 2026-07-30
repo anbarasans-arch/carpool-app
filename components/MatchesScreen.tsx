@@ -97,6 +97,11 @@ export default function MatchesScreen() {
                 Status: {m.status}
                 {m.trips ? ` · Departs ${new Date(m.trips.departure_time).toLocaleString()}` : ''}
               </Text>
+              {m.suggested_cost_split != null ? (
+                <Text style={styles.rowSubtext}>
+                  Suggested cost split: ${m.suggested_cost_split.toFixed(2)} (each way, per rider)
+                </Text>
+              ) : null}
               {m.status === 'confirmed' && contacts[m.id] ? (
                 <Text style={styles.contact}>Contact: {contacts[m.id]}</Text>
               ) : null}

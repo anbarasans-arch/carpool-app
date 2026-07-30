@@ -24,7 +24,7 @@ export default function RequestRideScreen() {
   const [success, setSuccess] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
-  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(new Set());
+  const [requestedCosts, setRequestedCosts] = useState<Record<string, number>>({});
   const windowStartRef = useRef<any>(null);
   const windowEndRef = useRef<any>(null);
 
@@ -87,7 +87,7 @@ export default function RequestRideScreen() {
     setSuccess(true);
     setCandidates(matches ?? []);
     setRequestId(inserted.id);
-    setRequestedTripIds(new Set());
+    setRequestedCosts({});
     setOrigin(null);
     setDestination(null);
     if (windowStartRef.current) windowStartRef.current.value = '';
@@ -96,15 +96,16 @@ export default function RequestRideScreen() {
 
   async function handleRequestMatch(tripId: string) {
     if (!requestId) return;
-    const { error: matchError } = await supabase.from('matches').insert({
-      trip_id: tripId,
-      ride_request_id: requestId,
-    });
+    const { data: inserted, error: matchError } = await supabase
+      .from('matches')
+      .insert({ trip_id: tripId, ride_request_id: requestId })
+      .select('suggested_cost_split')
+      .single();
     if (matchError) {
       setError(matchError.message);
       return;
     }
-    setRequestedTripIds((prev) => new Set(prev).add(tripId));
+    setRequestedCosts((prev) => ({ ...prev, [tripId]: inserted?.suggested_cost_split ?? 0 }));
   }
 
   return (
@@ -147,8 +148,11 @@ export default function RequestRideScreen() {
                 {(c.origin_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your origin,{' '}
                 {(c.destination_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your destination
               </Text>
-              {requestedTripIds.has(c.trip_id) ? (
-                <Text style={styles.requestedText}>Requested - waiting on driver</Text>
+              {c.trip_id in requestedCosts ? (
+                <Text style={styles.requestedText}>
+                  Requested - waiting on driver. Suggested cost split: $
+                  {requestedCosts[c.trip_id].toFixed(2)}
+                </Text>
               ) : (
                 <Pressable style={styles.requestButton} onPress={() => handleRequestMatch(c.trip_id)}>
                   <Text style={styles.requestButtonText}>Request this ride</Text>
