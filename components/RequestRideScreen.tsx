@@ -23,6 +23,8 @@ export default function RequestRideScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [requestedTripIds, setRequestedTripIds] = useState<Set<string>>(new Set());
   const windowStartRef = useRef<any>(null);
   const windowEndRef = useRef<any>(null);
 
@@ -84,10 +86,25 @@ export default function RequestRideScreen() {
 
     setSuccess(true);
     setCandidates(matches ?? []);
+    setRequestId(inserted.id);
+    setRequestedTripIds(new Set());
     setOrigin(null);
     setDestination(null);
     if (windowStartRef.current) windowStartRef.current.value = '';
     if (windowEndRef.current) windowEndRef.current.value = '';
+  }
+
+  async function handleRequestMatch(tripId: string) {
+    if (!requestId) return;
+    const { error: matchError } = await supabase.from('matches').insert({
+      trip_id: tripId,
+      ride_request_id: requestId,
+    });
+    if (matchError) {
+      setError(matchError.message);
+      return;
+    }
+    setRequestedTripIds((prev) => new Set(prev).add(tripId));
   }
 
   return (
@@ -130,6 +147,13 @@ export default function RequestRideScreen() {
                 {(c.origin_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your origin,{' '}
                 {(c.destination_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your destination
               </Text>
+              {requestedTripIds.has(c.trip_id) ? (
+                <Text style={styles.requestedText}>Requested - waiting on driver</Text>
+              ) : (
+                <Pressable style={styles.requestButton} onPress={() => handleRequestMatch(c.trip_id)}>
+                  <Text style={styles.requestButtonText}>Request this ride</Text>
+                </Pressable>
+              )}
             </View>
           ))}
         </View>
@@ -190,5 +214,24 @@ const styles = StyleSheet.create({
   candidateSubtext: {
     fontSize: 13,
     color: '#666',
+  },
+  requestButton: {
+    backgroundColor: '#111',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  requestButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  requestedText: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });

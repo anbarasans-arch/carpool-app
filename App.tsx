@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
+import MatchesScreen from './components/MatchesScreen';
 import PostTripScreen from './components/PostTripScreen';
 import RequestRideScreen from './components/RequestRideScreen';
 import SignInScreen from './components/SignInScreen';
 import { supabase } from './lib/supabase';
 
-type Tab = 'post' | 'request';
+type Tab = 'post' | 'request' | 'matches';
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -56,8 +57,11 @@ export default function App() {
         <Pressable onPress={() => setTab('request')}>
           <Text style={[styles.tabText, tab === 'request' && styles.tabTextActive]}>Request a ride</Text>
         </Pressable>
+        <Pressable onPress={() => setTab('matches')}>
+          <Text style={[styles.tabText, tab === 'matches' && styles.tabTextActive]}>My matches</Text>
+        </Pressable>
       </View>
-      {tab === 'post' ? <PostTripScreen /> : <RequestRideScreen />}
+      {tab === 'post' ? <PostTripScreen /> : tab === 'request' ? <RequestRideScreen /> : <MatchesScreen />}
       <StatusBar style="auto" />
     </View>
   );
