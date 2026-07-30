@@ -40,6 +40,17 @@ privacy items from the original spec - not repeated here.
       the map picker depend on unpkg.com being reachable. Worth revisiting to self-host
       the worker file (e.g. copy it into `assets/` and reference it locally) so the app
       doesn't have a runtime dependency on a third-party CDN for a core feature.
+- [ ] **Cost-split uses straight-line distance, not real driving distance.**
+      `set_suggested_cost_split_trigger` (migration `20260730130852`) uses PostGIS
+      `ST_Distance` between trip origin/destination - a reasonable MVP stand-in, but
+      PROJECT.md's stack table calls for a routing API (e.g. OpenRouteService free tier)
+      for actual driving distance/ETA. Swap this in once that's set up - another account
+      signup, similar to MapTiler/LocationIQ.
+- [ ] **Seat inventory isn't decremented.** `trips.seats_available` never decreases when
+      a match is confirmed, so a fully-booked trip can still show up as a candidate and
+      accept more matches than it has room for. Fine at pilot scale with manual
+      coordination, but worth fixing (e.g. a trigger on match confirmation) before real
+      usage.
 
 ## Product (explicitly deferred to Phase 2 in PROJECT.md)
 

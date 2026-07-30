@@ -104,7 +104,7 @@ matches
 - [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel
       at https://carpool-app-mu.vercel.app, auth flow confirmed live in browser
 
-**Phase 1 — Core loop (several sessions) - IN PROGRESS (started 2026-07-30)**
+**Phase 1 — Core loop (several sessions) - DONE (2026-07-30)**
 - [x] Driver can post a trip (origin, destination, time, seats) via a form + map picker.
       LocationPicker component (address search via LocationIQ + MapLibre/MapTiler map,
       click-to-place marker), PostTripScreen wires it to an insert into `trips`.
@@ -122,7 +122,10 @@ matches
       a specific candidate trip (inserts a pending `matches` row); driver confirms/declines
       from the new "My matches" tab. `get_match_contact()` reveals the other party's email
       only once confirmed. Verified end-to-end against the real DB.
-- [ ] Suggested cost-split calculation displayed
+- [x] Suggested cost-split calculation displayed. `set_suggested_cost_split_trigger`
+      computes it on match insert (straight-line trip distance x $0.67/mi, split 2 ways -
+      see FOLLOWUPS.md re: swapping in a real routing API later). Shown in both
+      RequestRideScreen (right after requesting) and MatchesScreen.
 
 **Phase 2 — Polish for demo**
 - Trip history / "my rides" view
