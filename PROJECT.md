@@ -109,7 +109,10 @@ matches
       LocationPicker component (address search via LocationIQ + MapLibre/MapTiler map,
       click-to-place marker), PostTripScreen wires it to an insert into `trips`.
       Verified end-to-end against the real DB, both locally and on the live Vercel site.
-- [ ] Rider can search/request a ride within their time window
+- [x] Rider can search/request a ride within their time window. RequestRideScreen
+      (mirrors PostTripScreen) inserts into `ride_requests` with an earliest/latest
+      departure window. App.tsx has a simple tab switcher between the two flows.
+      Verified end-to-end against the real DB.
 - [ ] Basic matching: server-side query returns candidate trips within radius + time window
 - [ ] Match confirmation flow, reveal contact info once both sides confirm
 - [ ] Suggested cost-split calculation displayed
