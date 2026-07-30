@@ -196,7 +196,9 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Default (2) is sized for Supabase's shared mailer; raised now that custom SMTP
+# (Resend) is enabled. Revisit before a real pilot rollout at higher user counts.
+email_sent = 30
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -233,15 +235,16 @@ otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Custom SMTP via Resend - needed because the free-tier default mailer
+# doesn't allow customizing email templates (see magic_link template below).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 587
+user = "resend"
+pass = "env(RESEND_SMTP_PASS)"
+admin_email = "onboarding@resend.dev"
+sender_name = "carpool-app"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]
@@ -250,6 +253,12 @@ otp_expiry = 3600
 
 # Sends the 6-digit {{ .Token }} instead of a magic link, so the app can use
 # a code-entry screen with verifyOtp() rather than a clickable link.
+# Both templates are needed: signInWithOtp() sends "confirmation" for a
+# brand-new email (first-ever request) and "magic_link" for a returning one.
+[auth.email.template.confirmation]
+subject = "Your carpool-app sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
 [auth.email.template.magic_link]
 subject = "Your carpool-app sign-in code"
 content_path = "./supabase/templates/magic_link.html"
