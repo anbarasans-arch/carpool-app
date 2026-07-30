@@ -118,7 +118,10 @@ matches
       origin and destination + time-window overlap), called via RPC right after a ride
       request is submitted; RequestRideScreen shows the resulting candidates. Verified
       end-to-end against the real DB.
-- [ ] Match confirmation flow, reveal contact info once both sides confirm
+- [x] Match confirmation flow, reveal contact info once both sides confirm. Rider requests
+      a specific candidate trip (inserts a pending `matches` row); driver confirms/declines
+      from the new "My matches" tab. `get_match_contact()` reveals the other party's email
+      only once confirmed. Verified end-to-end against the real DB.
 - [ ] Suggested cost-split calculation displayed
 
 **Phase 2 — Polish for demo**
