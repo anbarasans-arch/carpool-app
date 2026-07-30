@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
+import PostTripScreen from './components/PostTripScreen';
 import SignInScreen from './components/SignInScreen';
 import { supabase } from './lib/supabase';
 
@@ -37,12 +38,14 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Signed in</Text>
-      <Text style={styles.email}>{session.user.email}</Text>
-      <Pressable style={styles.button} onPress={() => supabase.auth.signOut()}>
-        <Text style={styles.buttonText}>Sign out</Text>
-      </Pressable>
+    <View style={styles.appContainer}>
+      <View style={styles.header}>
+        <Text style={styles.email}>{session.user.email}</Text>
+        <Pressable onPress={() => supabase.auth.signOut()}>
+          <Text style={styles.signOutText}>Sign out</Text>
+        </Pressable>
+      </View>
+      <PostTripScreen />
       <StatusBar style="auto" />
     </View>
   );
@@ -56,24 +59,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
+  appContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   email: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    marginBottom: 12,
   },
-  button: {
-    backgroundColor: '#111',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  signOutText: {
+    fontSize: 14,
+    color: '#c00',
+    textDecorationLine: 'underline',
   },
 });
