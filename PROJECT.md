@@ -97,11 +97,12 @@ matches
 
 ## 6. Phased build plan (sized for a few hours/week)
 
-**Phase 0 — Foundation (few sessions)**
-- Supabase project setup, Postgres schema, PostGIS enabled
-- Email OTP auth working end-to-end, with domain restriction
-- Expo app scaffold (web target via Expo web/React Native Web), deployed empty shell to
-  Vercel, confirm auth flow live in browser
+**Phase 0 — Foundation (few sessions) - DONE (2026-07-30)**
+- [x] Supabase project setup, Postgres schema, PostGIS enabled
+- [x] Email OTP auth working end-to-end, with domain restriction (real delivery to
+      arbitrary @fmr.com addresses pending a verified sending domain - see FOLLOWUPS.md)
+- [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel
+      at https://carpool-app-mu.vercel.app, auth flow confirmed live in browser
 
 **Phase 1 — Core loop (several sessions)**
 - Driver can post a trip (origin, destination, time, seats) via a form + map picker
