@@ -127,11 +127,14 @@ matches
       see FOLLOWUPS.md re: swapping in a real routing API later). Shown in both
       RequestRideScreen (right after requesting) and MatchesScreen.
 
-**Phase 2 — Polish for demo**
-- Trip history / "my rides" view
-- Basic email notifications ("you have a match")
-- Simple responsive styling, works well on phone browsers
-- Geofence validation (reject trips outside 50mi radius) with a clear error message
+**Phase 2 — Polish for demo - IN PROGRESS (started 2026-07-31)**
+- [x] Trip history / "my rides" view. Added `origin_label`/`destination_label` columns
+      (we were only storing raw coordinates before) so the new "My rides" tab can show
+      readable addresses for the signed-in user's own trips and ride requests.
+      Verified end-to-end against the real DB.
+- [ ] Basic email notifications ("you have a match")
+- [ ] Simple responsive styling, works well on phone browsers
+- [ ] Geofence validation (reject trips outside 50mi radius) with a clear error message
 
 **Phase 3 — Only if the company adopts it**
 - Migrate to company cloud infra
