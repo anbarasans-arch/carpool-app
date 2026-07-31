@@ -13,9 +13,13 @@ privacy items from the original spec - not repeated here.
       Needed to verify a sending domain with Resend (can't use gmail.com or fmr.com -
       you don't control DNS for either), and doubles as the app's real URL on Vercel
       instead of a generic `*.vercel.app` address.
-- [ ] **Verify the domain with Resend** once purchased, then update
-      `RESEND_SENDER_EMAIL` / `RESEND_SENDER_NAME` in `.env.local` and run
-      `supabase config push`. Currently sending from Resend's sandbox address
+- [ ] **Verify the domain with Resend** once purchased, then update the sender
+      address/name in **two separate places** - they don't share config: (1)
+      `RESEND_SENDER_EMAIL` / `RESEND_SENDER_NAME` in `.env.local`, applied via
+      `supabase config push` (used by Supabase Auth's SMTP for OTP emails), and (2) the
+      Edge Function secrets of the same names, applied via `supabase secrets set
+      RESEND_SENDER_EMAIL=... RESEND_SENDER_NAME=...` (used by the `notify-match`
+      function for match emails). Currently both send from Resend's sandbox address
       (`onboarding@resend.dev`), which only delivers to the Resend account's own email -
       not to real `@fmr.com` coworkers yet.
 - [ ] **Revisit the email send rate limit** (`auth.rate_limit.email_sent` in

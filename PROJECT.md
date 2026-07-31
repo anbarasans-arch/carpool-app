@@ -127,12 +127,16 @@ matches
       see FOLLOWUPS.md re: swapping in a real routing API later). Shown in both
       RequestRideScreen (right after requesting) and MatchesScreen.
 
-**Phase 2 — Polish for demo - IN PROGRESS (started 2026-07-31)**
+**Phase 2 — Polish for demo - DONE (2026-07-31)**
 - [x] Trip history / "my rides" view. Added `origin_label`/`destination_label` columns
       (we were only storing raw coordinates before) so the new "My rides" tab can show
       readable addresses for the signed-in user's own trips and ride requests.
       Verified end-to-end against the real DB.
-- [ ] Basic email notifications ("you have a match")
+- [x] Basic email notifications ("you have a match"). `notify-match` Edge Function emails
+      the driver when a rider proposes a match, and the rider when the driver confirms.
+      Verified the authorization/recipient-lookup logic end-to-end; actual delivery is
+      blocked by the same Resend sandbox restriction as OTP emails until a domain is
+      verified (see FOLLOWUPS.md).
 - [x] Simple responsive styling, works well on phone browsers. Fixed the one real
       overflow bug found (tab bar clipped at 360px width - now horizontally
       scrollable). Verified at 360px, 375px, tablet, and desktop; everything else
