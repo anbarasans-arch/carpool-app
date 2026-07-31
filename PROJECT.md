@@ -137,7 +137,11 @@ matches
       overflow bug found (tab bar clipped at 360px width - now horizontally
       scrollable). Verified at 360px, 375px, tablet, and desktop; everything else
       already adapted correctly via existing flexbox/maxWidth layouts.
-- [ ] Geofence validation (reject trips outside 50mi radius) with a clear error message
+- [x] Geofence validation (reject trips outside 50mi radius) with a clear error message.
+      Office confirmed: 1 Destiny Way, Westlake, TX 76262 (32.9817475, -97.1906054).
+      `enforce_trip_geofence_trigger` rejects trip insert/update when origin or
+      destination is outside 50mi, scoped to `trips` only (see FOLLOWUPS.md re:
+      ride_requests). Verified end-to-end including through the real UI.
 
 **Phase 3 — Only if the company adopts it**
 - Migrate to company cloud infra

@@ -54,11 +54,6 @@ privacy items from the original spec - not repeated here.
 
 ## Product (explicitly deferred to Phase 2 in PROJECT.md)
 
-- [ ] Geofence validation - reject trip creation outside the 50mi Dallas radius, with a
-      clear error message. Office address confirmed 2026-07-31: **1 Destiny Way,
-      Westlake, TX 76262** (Fidelity's Westlake corporate offices, matches the @fmr.com
-      domain) - geocoded to **32.9817475, -97.1906054**. Ready to implement whenever
-      this gets picked up.
 - [ ] Recurring/scheduled trip templates.
 - [ ] Admin dashboard / analytics.
 - [ ] Rating/review system.
