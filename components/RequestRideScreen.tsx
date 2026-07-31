@@ -62,6 +62,8 @@ export default function RequestRideScreen() {
         rider_id: user.id,
         origin_point: `SRID=4326;POINT(${origin.lng} ${origin.lat})`,
         destination_point: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
+        origin_label: origin.label,
+        destination_label: destination.label,
         desired_time_start: new Date(windowStartValue).toISOString(),
         desired_time_end: new Date(windowEndValue).toISOString(),
       })
