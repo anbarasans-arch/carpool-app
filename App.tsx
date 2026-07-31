@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import MatchesScreen from './components/MatchesScreen';
@@ -51,7 +51,12 @@ export default function App() {
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
       </View>
-      <View style={styles.tabs}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsScroll}
+        contentContainerStyle={styles.tabs}
+      >
         <Pressable onPress={() => setTab('post')}>
           <Text style={[styles.tabText, tab === 'post' && styles.tabTextActive]}>Post a trip</Text>
         </Pressable>
@@ -64,7 +69,7 @@ export default function App() {
         <Pressable onPress={() => setTab('rides')}>
           <Text style={[styles.tabText, tab === 'rides' && styles.tabTextActive]}>My rides</Text>
         </Pressable>
-      </View>
+      </ScrollView>
       {tab === 'post' ? (
         <PostTripScreen />
       ) : tab === 'request' ? (
@@ -108,12 +113,17 @@ const styles = StyleSheet.create({
     color: '#c00',
     textDecorationLine: 'underline',
   },
+  tabsScroll: {
+    flexGrow: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
   tabs: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    flexGrow: 1,
+    gap: 20,
+    paddingHorizontal: 16,
     paddingBottom: 12,
   },
   tabText: {
