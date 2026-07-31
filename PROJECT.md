@@ -1,6 +1,8 @@
 # Company Carpool App — Project Spec
 
-**Status:** Pre-build / planning
+**Status:** Phases 0-2 done (2026-07-31) - core loop + demo polish complete, MVP is
+pilot-demo-ready pending a verified sending domain for real @fmr.com email delivery
+(see FOLLOWUPS.md). Phase 3 only if the company adopts it.
 **Builder:** Solo, non-technical, ~few hours/week, building with Claude Code
 **Goal:** MVP to demo internally; company may adopt and move to their own cloud after
 

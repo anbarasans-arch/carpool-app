@@ -56,6 +56,23 @@ privacy items from the original spec - not repeated here.
       coordination, but worth fixing (e.g. a trigger on match confirmation) before real
       usage.
 
+## Minor rough edges (found during final review, 2026-07-31)
+
+- [ ] **PostTripScreen/RequestRideScreen don't fully reset LocationPicker after a
+      successful submit.** The parent clears its own `origin`/`destination` state, but
+      LocationPicker's internal search text and map marker are local state that doesn't
+      hear about that - so after "Trip posted!"/"Ride requested!" the search boxes and
+      pins visually linger even though the underlying values are gone. Purely cosmetic
+      (doesn't affect what gets submitted). Fix would be giving LocationPicker a `key`
+      that changes on successful submit, forcing a clean remount - safe to do now that
+      unmount properly cleans up the map (see the memory-leak fix in the same review).
+- [ ] **Double-clicking "Request this ride" fast enough could show a raw Postgres error.**
+      The button is hidden after one successful request (via React state), so this needs
+      a genuine double-click before the state updates - the `matches` unique constraint on
+      (trip_id, ride_request_id) correctly prevents a duplicate row either way, this is
+      only about the error message being unfriendly ("duplicate key value violates unique
+      constraint...") in that narrow race. Low priority.
+
 ## Product (explicitly deferred to Phase 2 in PROJECT.md)
 
 - [ ] Recurring/scheduled trip templates.
