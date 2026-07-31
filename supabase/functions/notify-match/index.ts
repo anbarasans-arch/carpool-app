@@ -9,8 +9,6 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const RESEND_SENDER_EMAIL = Deno.env.get("RESEND_SENDER_EMAIL")!;
 const RESEND_SENDER_NAME = Deno.env.get("RESEND_SENDER_NAME") ?? "carpool-app";
 
-type NotifyEvent = "requested" | "confirmed";
-
 // Called right after a client action that already succeeded (a rider
 // proposing a match, or a driver confirming one) to send a heads-up email.
 // Uses "user" auth so ctx.userClaims.id is a verified caller identity - the

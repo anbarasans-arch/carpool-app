@@ -23,16 +23,24 @@ export default function LocationPicker({ label, value, onChange }: Props) {
   const mapContainerRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  // The mount effect below only runs once, so it captures `value` at
+  // mount time. If a search or click resolves before the async map load
+  // finishes, that closure would be stale - read this ref instead so the
+  // map picks up whatever the latest value actually is once it's ready.
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !mapContainerRef.current || mapRef.current) {
       return;
     }
 
+    let cancelled = false;
+
     // Dynamic import so this never loads on native, where it would fail -
     // native map support is a follow-up (we're web-first for now).
     import('maplibre-gl').then((mod: any) => {
-      if (mapRef.current) return;
+      if (cancelled || mapRef.current) return;
 
       // Metro's ESM interop doesn't consistently populate `.default` here,
       // so fall back to the named exports either way.
@@ -51,11 +59,12 @@ export default function LocationPicker({ label, value, onChange }: Props) {
       // error event - just stuck). Point it at a matching CDN copy instead.
       maplibregl.setWorkerUrl('https://unpkg.com/maplibre-gl@6/dist/maplibre-gl-worker.mjs');
 
+      const currentValue = valueRef.current;
       const map = new maplibregl.Map({
         container: mapContainerRef.current,
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
-        center: value ? [value.lng, value.lat] : DEFAULT_CENTER,
-        zoom: value ? 13 : 10,
+        center: currentValue ? [currentValue.lng, currentValue.lat] : DEFAULT_CENTER,
+        zoom: currentValue ? 13 : 10,
       });
 
       map.on('click', (e: any) => {
@@ -65,10 +74,21 @@ export default function LocationPicker({ label, value, onChange }: Props) {
       mapRef.current = map;
       map.on('error', (e: any) => console.error('maplibre error', e?.error ?? e));
 
-      if (value) {
-        markerRef.current = new maplibregl.Marker().setLngLat([value.lng, value.lat]).addTo(map);
+      if (currentValue) {
+        markerRef.current = new maplibregl.Marker()
+          .setLngLat([currentValue.lng, currentValue.lat])
+          .addTo(map);
       }
     });
+
+    return () => {
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
