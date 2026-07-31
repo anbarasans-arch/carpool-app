@@ -133,7 +133,10 @@ matches
       readable addresses for the signed-in user's own trips and ride requests.
       Verified end-to-end against the real DB.
 - [ ] Basic email notifications ("you have a match")
-- [ ] Simple responsive styling, works well on phone browsers
+- [x] Simple responsive styling, works well on phone browsers. Fixed the one real
+      overflow bug found (tab bar clipped at 360px width - now horizontally
+      scrollable). Verified at 360px, 375px, tablet, and desktop; everything else
+      already adapted correctly via existing flexbox/maxWidth layouts.
 - [ ] Geofence validation (reject trips outside 50mi radius) with a clear error message
 
 **Phase 3 — Only if the company adopts it**
