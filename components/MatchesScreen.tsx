@@ -64,6 +64,15 @@ export default function MatchesScreen() {
       setError(updateError.message);
       return;
     }
+
+    if (status === 'confirmed') {
+      // Best-effort notification - the confirmation itself is already
+      // saved, so a failure here shouldn't surface as an error.
+      supabase.functions
+        .invoke('notify-match', { body: { match_id: matchId, event: 'confirmed' } })
+        .catch(() => {});
+    }
+
     load();
   }
 

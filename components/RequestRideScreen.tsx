@@ -101,13 +101,19 @@ export default function RequestRideScreen() {
     const { data: inserted, error: matchError } = await supabase
       .from('matches')
       .insert({ trip_id: tripId, ride_request_id: requestId })
-      .select('suggested_cost_split')
+      .select('id, suggested_cost_split')
       .single();
     if (matchError) {
       setError(matchError.message);
       return;
     }
     setRequestedCosts((prev) => ({ ...prev, [tripId]: inserted?.suggested_cost_split ?? 0 }));
+
+    // Best-effort notification - the match itself is already saved, so a
+    // failure here shouldn't surface as an error to the rider.
+    supabase.functions
+      .invoke('notify-match', { body: { match_id: inserted.id, event: 'requested' } })
+      .catch(() => {});
   }
 
   return (
