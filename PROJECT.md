@@ -1,8 +1,9 @@
 # Company Carpool App — Project Spec
 
-**Status:** Phases 0-2 done (2026-07-31) - core loop + demo polish complete, MVP is
-pilot-demo-ready pending a verified sending domain for real @fmr.com email delivery
-(see FOLLOWUPS.md). Phase 3 only if the company adopts it.
+**Status:** Phases 0-2 done, sending domain verified (2026-08-01) - core loop + demo
+polish complete, real email delivery (OTP + match notifications) to actual @fmr.com
+inboxes confirmed working end-to-end. MVP is pilot-demo-ready. Phase 3 only if the
+company adopts it.
 **Builder:** Solo, non-technical, ~few hours/week, building with Claude Code
 **Goal:** MVP to demo internally; company may adopt and move to their own cloud after
 
@@ -101,8 +102,9 @@ matches
 
 **Phase 0 — Foundation (few sessions) - DONE (2026-07-30)**
 - [x] Supabase project setup, Postgres schema, PostGIS enabled
-- [x] Email OTP auth working end-to-end, with domain restriction (real delivery to
-      arbitrary @fmr.com addresses pending a verified sending domain - see FOLLOWUPS.md)
+- [x] Email OTP auth working end-to-end, with domain restriction. Real delivery to
+      arbitrary @fmr.com addresses confirmed working (2026-08-01) after verifying
+      `mail.lets-carpool.com` with Resend - see FOLLOWUPS.md.
 - [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel
       at https://carpool-app-mu.vercel.app, auth flow confirmed live in browser
 
@@ -136,9 +138,8 @@ matches
       Verified end-to-end against the real DB.
 - [x] Basic email notifications ("you have a match"). `notify-match` Edge Function emails
       the driver when a rider proposes a match, and the rider when the driver confirms.
-      Verified the authorization/recipient-lookup logic end-to-end; actual delivery is
-      blocked by the same Resend sandbox restriction as OTP emails until a domain is
-      verified (see FOLLOWUPS.md).
+      Verified end-to-end including real delivery, now that `mail.lets-carpool.com` is
+      verified with Resend (2026-08-01).
 - [x] Simple responsive styling, works well on phone browsers. Fixed the one real
       overflow bug found (tab bar clipped at 360px width - now horizontally
       scrollable). Verified at 360px, 375px, tablet, and desktop; everything else

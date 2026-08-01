@@ -9,19 +9,16 @@ privacy items from the original spec - not repeated here.
 
 ## Infra / deployment
 
-- [ ] **Buy a real domain** (~$10-15/year, e.g. via Namecheap or Cloudflare Registrar).
-      Needed to verify a sending domain with Resend (can't use gmail.com or fmr.com -
-      you don't control DNS for either), and doubles as the app's real URL on Vercel
-      instead of a generic `*.vercel.app` address.
-- [ ] **Verify the domain with Resend** once purchased, then update the sender
-      address/name in **two separate places** - they don't share config: (1)
-      `RESEND_SENDER_EMAIL` / `RESEND_SENDER_NAME` in `.env.local`, applied via
-      `supabase config push` (used by Supabase Auth's SMTP for OTP emails), and (2) the
-      Edge Function secrets of the same names, applied via `supabase secrets set
-      RESEND_SENDER_EMAIL=... RESEND_SENDER_NAME=...` (used by the `notify-match`
-      function for match emails). Currently both send from Resend's sandbox address
-      (`onboarding@resend.dev`), which only delivers to the Resend account's own email -
-      not to real `@fmr.com` coworkers yet.
+- [x] **Buy a real domain.** Bought `lets-carpool.com` via Cloudflare Registrar
+      (2026-08-01). Root domain still free for the app's own URL later; email sends from
+      the `mail.lets-carpool.com` subdomain to avoid DNS conflicts with that.
+- [x] **Verify the domain with Resend.** Verified 2026-08-01 (DKIM + SPF + optional DMARC
+      all added in Cloudflare DNS). Sender updated in both places - `.env.local` /
+      `supabase config push` (Auth SMTP) and `supabase secrets set` (the `notify-match`
+      function) - to `noreply@mail.lets-carpool.com` / "Let's Carpool". Real delivery to
+      an actual `@fmr.com` inbox confirmed working, including the code-based template
+      (not just a link). First attempt landed in spam/was briefly delayed - expected for
+      a brand-new sending domain with no reputation yet; resolved after adding DMARC.
 - [ ] **Revisit the email send rate limit** (`auth.rate_limit.email_sent` in
       `supabase/config.toml`, currently 30/hour project-wide). Fine for testing and a
       small pilot; may need to go higher before a wider rollout.
