@@ -57,11 +57,17 @@ privacy items from the original spec - not repeated here.
       the worker file (e.g. copy it into `assets/` and reference it locally) so the app
       doesn't have a runtime dependency on a third-party CDN for a core feature.
 - [ ] **Cost-split uses straight-line distance, not real driving distance.**
-      `set_suggested_cost_split_trigger` (migration `20260730130852`) uses PostGIS
-      `ST_Distance` between trip origin/destination - a reasonable MVP stand-in, but
-      PROJECT.md's stack table calls for a routing API (e.g. OpenRouteService free tier)
-      for actual driving distance/ETA. Swap this in once that's set up - another account
-      signup, similar to MapTiler/LocationIQ.
+      `set_suggested_cost_split_trigger` (migration `20260730130852`, updated
+      `20260802070000`) uses PostGIS `ST_Distance` between trip origin/destination - a
+      reasonable MVP stand-in, but PROJECT.md's stack table calls for a routing API
+      (e.g. OpenRouteService free tier) for actual driving distance/ETA. Swap this in
+      once that's set up - another account signup, similar to MapTiler/LocationIQ.
+- [x] **Cost-split always divided by 2 regardless of seat count.** Fixed 2026-08-02
+      (`supabase/migrations/20260802070000_cost_split_by_seats.sql`) - now divides by
+      (1 + trip's seats_available) so a bigger trip means a cheaper suggested share per
+      rider. Every match on the same trip gets the same per-rider amount. Note this
+      still uses the trip's originally-posted seat count, not how many riders actually
+      ended up matched, since seat inventory isn't decremented yet (see the gap below).
 - [ ] **Seat inventory isn't decremented.** `trips.seats_available` never decreases when
       a match is confirmed, so a fully-booked trip can still show up as a candidate and
       accept more matches than it has room for. Fine at pilot scale with manual
