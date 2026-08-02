@@ -5,7 +5,19 @@ import { withSupabase } from "@supabase/server";
 // Only @fmr.com addresses may request a code. This check must happen here,
 // before signInWithOtp is ever called - the client must not be able to
 // trigger an OTP email by calling Supabase Auth directly.
-const FMR_EMAIL = /^[^\s@]+@fmr\.com$/i;
+//
+// TEMPORARY TEST MODE (added 2026-08-02): @gmail.com is allowed too, so the
+// solo builder can test driver + rider flows via Gmail plus-addressing
+// (e.g. you+driver@gmail.com / you+rider@gmail.com) without spamming their
+// own @fmr.com inbox or needing multiple corporate accounts. REMOVE the
+// "gmail.com" entry (and the matching DB check constraint change in
+// supabase/migrations/20260802*_allow_test_domain.sql) before any wider
+// pilot rollout - see FOLLOWUPS.md.
+const ALLOWED_DOMAINS = ["fmr.com", "gmail.com"];
+const ALLOWED_EMAIL = new RegExp(
+  `^[^\\s@]+@(${ALLOWED_DOMAINS.map((d) => d.replace(".", "\\.")).join("|")})$`,
+  "i",
+);
 
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
@@ -20,7 +32,7 @@ export default {
       return Response.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    if (typeof email !== "string" || !FMR_EMAIL.test(email)) {
+    if (typeof email !== "string" || !ALLOWED_EMAIL.test(email)) {
       return Response.json(
         { error: "Only @fmr.com email addresses may request a sign-in code." },
         { status: 403 },

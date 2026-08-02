@@ -7,6 +7,17 @@ there's a record of what was considered.
 See also `PROJECT.md` section 7 ("Open flags") for the pre-existing HR/Legal and data
 privacy items from the original spec - not repeated here.
 
+## ⚠️ Temporary test mode - revert before wider rollout
+
+- [ ] **@gmail.com is temporarily allowed to sign in, alongside @fmr.com.** Added
+      2026-08-02 so the solo builder could test driver + rider flows via Gmail
+      plus-addressing (e.g. `you+driver@gmail.com` / `you+rider@gmail.com`) without
+      needing multiple real @fmr.com inboxes. Two places to revert before any wider
+      pilot: remove `"gmail.com"` from `ALLOWED_DOMAINS` in
+      `supabase/functions/request-otp/index.ts` (redeploy the function after), and run
+      a migration that drops/recreates `users_email_check` back to `@fmr.com` only
+      (undoes `supabase/migrations/20260802060000_allow_test_domain.sql`).
+
 ## Infra / deployment
 
 - [x] **Buy a real domain.** Bought `lets-carpool.com` via Cloudflare Registrar
