@@ -1,9 +1,9 @@
 # Company Carpool App — Project Spec
 
-**Status:** Phases 0-2 done, sending domain verified (2026-08-01) - core loop + demo
-polish complete, real email delivery (OTP + match notifications) to actual @fmr.com
-inboxes confirmed working end-to-end. MVP is pilot-demo-ready. Phase 3 only if the
-company adopts it.
+**Status:** Phases 0-2 done, sending domain verified (2026-08-01), custom domain live
+(2026-08-02) - core loop + demo polish complete, real email delivery (OTP + match
+notifications) to actual @fmr.com inboxes confirmed working end-to-end, app now live at
+https://lets-carpool.com. MVP is pilot-demo-ready. Phase 3 only if the company adopts it.
 **Builder:** Solo, non-technical, ~few hours/week, building with Claude Code
 **Goal:** MVP to demo internally; company may adopt and move to their own cloud after
 
@@ -105,8 +105,9 @@ matches
 - [x] Email OTP auth working end-to-end, with domain restriction. Real delivery to
       arbitrary @fmr.com addresses confirmed working (2026-08-01) after verifying
       `mail.lets-carpool.com` with Resend - see FOLLOWUPS.md.
-- [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel
-      at https://carpool-app-mu.vercel.app, auth flow confirmed live in browser
+- [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel,
+      auth flow confirmed live in browser. Custom domain `lets-carpool.com` connected
+      (2026-08-02) - live at https://lets-carpool.com (Vercel URL still works too).
 
 **Phase 1 — Core loop (several sessions) - DONE (2026-07-30)**
 - [x] Driver can post a trip (origin, destination, time, seats) via a form + map picker.

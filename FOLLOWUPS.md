@@ -19,6 +19,10 @@ privacy items from the original spec - not repeated here.
       an actual `@fmr.com` inbox confirmed working, including the code-based template
       (not just a link). First attempt landed in spam/was briefly delayed - expected for
       a brand-new sending domain with no reputation yet; resolved after adding DMARC.
+- [x] **Connect the root domain to the Vercel app.** Added a CNAME at `@` in Cloudflare
+      pointing at Vercel's per-project target (DNS only, not proxied); Vercel flipped to
+      "Valid Configuration". Confirmed live 2026-08-02 - https://lets-carpool.com loads
+      the app (user verified from their phone). The Vercel-issued URL still works too.
 - [ ] **Revisit the email send rate limit** (`auth.rate_limit.email_sent` in
       `supabase/config.toml`, currently 30/hour project-wide). Fine for testing and a
       small pilot; may need to go higher before a wider rollout.
