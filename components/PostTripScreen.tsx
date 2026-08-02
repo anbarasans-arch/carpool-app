@@ -11,6 +11,7 @@ import {
 
 import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
+import { trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
@@ -67,6 +68,7 @@ export default function PostTripScreen() {
       return;
     }
 
+    trackEvent('trip_posted', { seats: seatsNumber });
     setSuccess(true);
     setOrigin(null);
     setDestination(null);

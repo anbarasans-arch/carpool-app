@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 
 type MatchRow = {
@@ -64,6 +65,8 @@ export default function MatchesScreen() {
       setError(updateError.message);
       return;
     }
+
+    trackEvent(status === 'confirmed' ? 'match_confirmed' : 'match_declined');
 
     if (status === 'confirmed') {
       // Best-effort notification - the confirmation itself is already

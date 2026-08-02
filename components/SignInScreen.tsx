@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 
+import { trackEvent } from '../lib/analytics';
 import { requestOtp, supabase } from '../lib/supabase';
 
 type Step = 'email' | 'code';
@@ -44,7 +45,9 @@ export default function SignInScreen() {
 
     if (error) {
       setError(error.message);
+      return;
     }
+    trackEvent('sign_in_completed');
   }
 
   if (step === 'email') {

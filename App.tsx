@@ -8,6 +8,7 @@ import MyRidesScreen from './components/MyRidesScreen';
 import PostTripScreen from './components/PostTripScreen';
 import RequestRideScreen from './components/RequestRideScreen';
 import SignInScreen from './components/SignInScreen';
+import { identifyUser, resetAnalyticsUser, trackEvent } from './lib/analytics';
 import { supabase } from './lib/supabase';
 
 type Tab = 'post' | 'request' | 'matches' | 'rides';
@@ -17,6 +18,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('post');
 
+  function handleTabChange(nextTab: Tab) {
+    setTab(nextTab);
+    trackEvent('tab_viewed', { tab: nextTab });
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -25,6 +31,11 @@ export default function App() {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) {
+        identifyUser(session.user.id);
+      } else {
+        resetAnalyticsUser();
+      }
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -57,16 +68,16 @@ export default function App() {
         style={styles.tabsScroll}
         contentContainerStyle={styles.tabs}
       >
-        <Pressable onPress={() => setTab('post')}>
+        <Pressable onPress={() => handleTabChange('post')}>
           <Text style={[styles.tabText, tab === 'post' && styles.tabTextActive]}>Post a trip</Text>
         </Pressable>
-        <Pressable onPress={() => setTab('request')}>
+        <Pressable onPress={() => handleTabChange('request')}>
           <Text style={[styles.tabText, tab === 'request' && styles.tabTextActive]}>Request a ride</Text>
         </Pressable>
-        <Pressable onPress={() => setTab('matches')}>
+        <Pressable onPress={() => handleTabChange('matches')}>
           <Text style={[styles.tabText, tab === 'matches' && styles.tabTextActive]}>My matches</Text>
         </Pressable>
-        <Pressable onPress={() => setTab('rides')}>
+        <Pressable onPress={() => handleTabChange('rides')}>
           <Text style={[styles.tabText, tab === 'rides' && styles.tabTextActive]}>My rides</Text>
         </Pressable>
       </ScrollView>

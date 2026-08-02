@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
+import { trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
@@ -86,6 +87,7 @@ export default function RequestRideScreen() {
       return;
     }
 
+    trackEvent('ride_requested', { candidate_count: matches?.length ?? 0 });
     setSuccess(true);
     setCandidates(matches ?? []);
     setRequestId(inserted.id);
@@ -108,6 +110,7 @@ export default function RequestRideScreen() {
       return;
     }
     setRequestedCosts((prev) => ({ ...prev, [tripId]: inserted?.suggested_cost_split ?? 0 }));
+    trackEvent('match_proposed');
 
     // Best-effort notification - the match itself is already saved, so a
     // failure here shouldn't surface as an error to the rider.
