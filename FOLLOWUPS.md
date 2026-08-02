@@ -78,6 +78,34 @@ privacy items from the original spec - not repeated here.
       overbooking block, and candidate-list exclusion) against live test rows, cleaned up
       after.
 
+## Matching (2026-08-02)
+
+- [x] **Matching was one-directional (rider searches trips only).** A driver posting a
+      trip had no way to discover nearby open ride requests that already existed - they
+      could only wait for a rider to come find them. Fixed with bidirectional matching
+      (`supabase/migrations/20260802090000_bidirectional_matching.sql` +
+      `20260802100000` + `20260802110000`):
+      - `find_candidate_riders(trip_id)` (security definer, driver-ownership-checked)
+        mirrors `find_candidate_trips` in reverse - shown on PostTripScreen right after
+        posting, with an "Invite this rider" button per candidate.
+      - `matches.proposed_by` (server-set by trigger, never client-trusted) tracks who
+        initiated a match, so `notify-match` and the confirm/decline UI work generically
+        regardless of direction - whoever did NOT propose is the one who needs to
+        respond.
+      - Two real bugs found and fixed during verification (both against live test
+        accounts under real RLS, not just service-role): (1) the seat-decrement trigger
+        from `20260802080000` only worked when the *driver* confirmed, since it ran as
+        invoker and a rider has no RLS rights to update someone else's trip - now
+        `security definer`. (2) the matches UPDATE policy was still
+        `"Drivers can confirm or decline matches for own trips"` (driver-only, a leftover
+        from migration `20260730125139` predating bidirectional matching) - replaced
+        with a policy scoped to "whoever did not propose", which also generalizes the
+        original self-confirmation protection correctly.
+      - Still one-shot, not proactive over time: a driver only sees candidates that
+        already existed *at the moment they post*. A ride request created *after* the
+        trip was posted still won't notify the driver on its own - that's the "option 2"
+        half of this (a trigger-based notification on new inserts), not yet built.
+
 ## Minor rough edges (found during final review, 2026-07-31)
 
 - [ ] **PostTripScreen/RequestRideScreen don't fully reset LocationPicker after a

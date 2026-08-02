@@ -11,14 +11,21 @@ const RESEND_SENDER_NAME = Deno.env.get("RESEND_SENDER_NAME") ?? "carpool-app";
 const SITE_URL = Deno.env.get("SITE_URL") ?? "https://lets-carpool.com";
 const MY_MATCHES_URL = `${SITE_URL}/?tab=matches`;
 
-// Called right after a client action that already succeeded (a rider
-// proposing a match, or a driver confirming one) to send a heads-up email.
-// Uses "user" auth so ctx.userClaims.id is a verified caller identity - the
-// authorization check below (is this caller actually a participant of this
-// match, in the right role for this event) is done explicitly here rather
-// than relying on RLS, since the actual email lookups need a service-role
+// Called right after a client action that already succeeded (either side
+// proposing a match, or the other side confirming it) to send a heads-up
+// email. Uses "user" auth so ctx.userClaims.id is a verified caller
+// identity - the authorization check below (is this caller actually the
+// right participant for this event) is done explicitly here rather than
+// relying on RLS, since the actual email lookups need a service-role
 // client that bypasses RLS entirely (public.users only allows seeing your
 // own row).
+//
+// Matching is bidirectional (a rider can request a trip, or a driver can
+// invite a rider - see migration 20260802090000), so direction is read
+// from matches.proposed_by rather than assumed from the event name: for
+// "proposed" the recipient is whichever side did NOT propose, and for
+// "confirmed" the recipient is whoever DID propose (the responder is the
+// one who just confirmed, so they don't need their own email).
 export default {
   fetch: withSupabase({ auth: ["user"] }, async (req, ctx) => {
     if (req.method !== "POST") {
@@ -33,7 +40,7 @@ export default {
       return Response.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    if (typeof matchId !== "string" || (event !== "requested" && event !== "confirmed")) {
+    if (typeof matchId !== "string" || (event !== "proposed" && event !== "confirmed")) {
       return Response.json({ error: "Invalid match_id or event" }, { status: 400 });
     }
 
@@ -43,11 +50,12 @@ export default {
     const { data: match, error: fetchError } = await supabaseAdmin
       .from("matches")
       .select(
-        "id, trips(driver_id, departure_time, users(email)), ride_requests(rider_id, users(email))",
+        "id, proposed_by, trips(driver_id, departure_time, users(email)), ride_requests(rider_id, users(email))",
       )
       .eq("id", matchId)
       .single<{
         id: string;
+        proposed_by: string;
         trips: { driver_id: string; departure_time: string; users: { email: string } } | null;
         ride_requests: { rider_id: string; users: { email: string } } | null;
       }>();
@@ -61,22 +69,33 @@ export default {
     const riderId = match.ride_requests.rider_id;
     const driverEmail = match.trips.users.email;
     const riderEmail = match.ride_requests.users.email;
+    const proposerIsDriver = match.proposed_by === driverId;
 
     const authorized =
-      (event === "requested" && callerId === riderId) ||
-      (event === "confirmed" && callerId === driverId);
+      (event === "proposed" && callerId === match.proposed_by) ||
+      (event === "confirmed" &&
+        (callerId === driverId || callerId === riderId) &&
+        callerId !== match.proposed_by);
 
     if (!authorized) {
       return Response.json({ message: "No notification sent." });
     }
 
-    const recipientEmail: string = event === "requested" ? driverEmail : riderEmail;
-    const subject =
-      event === "requested" ? "You have a new ride request" : "Your ride match is confirmed";
-    const html =
-      event === "requested"
-        ? `<p>Someone requested to join one of your trips.</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to confirm or decline.</p>`
-        : `<p>Your ride match is confirmed!</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to see your driver's contact info.</p>`;
+    let recipientEmail: string;
+    let subject: string;
+    let html: string;
+
+    if (event === "proposed") {
+      recipientEmail = proposerIsDriver ? riderEmail : driverEmail;
+      subject = proposerIsDriver ? "A driver invited you to share a ride" : "You have a new ride request";
+      html = proposerIsDriver
+        ? `<p>A driver invited you to share their trip.</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to confirm or decline.</p>`
+        : `<p>Someone requested to join one of your trips.</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to confirm or decline.</p>`;
+    } else {
+      recipientEmail = proposerIsDriver ? driverEmail : riderEmail;
+      subject = "Your ride match is confirmed";
+      html = `<p>Your ride match is confirmed!</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to see contact info.</p>`;
+    }
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

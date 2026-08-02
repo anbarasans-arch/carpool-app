@@ -115,7 +115,7 @@ export default function RequestRideScreen() {
     // Best-effort notification - the match itself is already saved, so a
     // failure here shouldn't surface as an error to the rider.
     supabase.functions
-      .invoke('notify-match', { body: { match_id: inserted.id, event: 'requested' } })
+      .invoke('notify-match', { body: { match_id: inserted.id, event: 'proposed' } })
       .catch(() => {});
   }
 

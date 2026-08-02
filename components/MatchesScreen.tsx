@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 type MatchRow = {
   id: string;
   status: 'pending' | 'confirmed' | 'declined';
+  proposed_by: string;
   suggested_cost_split: number | null;
   created_at: string;
   trips: { driver_id: string; departure_time: string } | null;
@@ -30,7 +31,7 @@ export default function MatchesScreen() {
     const { data, error: fetchError } = await supabase
       .from('matches')
       .select(
-        'id, status, suggested_cost_split, created_at, trips(driver_id, departure_time), ride_requests(rider_id, desired_time_start, desired_time_end)',
+        'id, status, proposed_by, suggested_cost_split, created_at, trips(driver_id, departure_time), ride_requests(rider_id, desired_time_start, desired_time_end)',
       )
       .order('created_at', { ascending: false })
       .returns<MatchRow[]>();
@@ -101,7 +102,12 @@ export default function MatchesScreen() {
       ) : (
         matches.map((m) => {
           const isDriver = m.trips?.driver_id === userId;
-          const role = isDriver ? 'You are driving' : 'You requested this ride';
+          const isProposer = m.proposed_by === userId;
+          const role = isDriver
+            ? 'You are driving'
+            : isProposer
+              ? 'You requested this ride'
+              : 'A driver invited you to this ride';
           return (
             <View key={m.id} style={styles.row}>
               <Text style={styles.rowTitle}>{role}</Text>
@@ -117,7 +123,7 @@ export default function MatchesScreen() {
               {m.status === 'confirmed' && contacts[m.id] ? (
                 <Text style={styles.contact}>Contact: {contacts[m.id]}</Text>
               ) : null}
-              {isDriver && m.status === 'pending' ? (
+              {m.status === 'pending' && !isProposer ? (
                 <View style={styles.actions}>
                   <Pressable style={styles.confirmButton} onPress={() => respond(m.id, 'confirmed')}>
                     <Text style={styles.confirmButtonText}>Confirm</Text>
