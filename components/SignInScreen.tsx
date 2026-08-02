@@ -30,6 +30,7 @@ export default function SignInScreen() {
       setError(error);
       return;
     }
+    trackEvent('otp_requested');
     setStep('code');
   }
 

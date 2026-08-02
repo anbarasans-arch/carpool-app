@@ -26,14 +26,20 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      if (data.session) {
+        identifyUser(data.session.user.id, data.session.user.email);
+      }
       setLoading(false);
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (session) {
-        identifyUser(session.user.id);
-      } else {
+
+      if (event === 'SIGNED_IN' && session) {
+        identifyUser(session.user.id, session.user.email);
+      }
+
+      if (event === 'SIGNED_OUT') {
         resetAnalyticsUser();
       }
     });
