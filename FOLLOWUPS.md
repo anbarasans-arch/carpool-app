@@ -68,11 +68,15 @@ privacy items from the original spec - not repeated here.
       rider. Every match on the same trip gets the same per-rider amount. Note this
       still uses the trip's originally-posted seat count, not how many riders actually
       ended up matched, since seat inventory isn't decremented yet (see the gap below).
-- [ ] **Seat inventory isn't decremented.** `trips.seats_available` never decreases when
-      a match is confirmed, so a fully-booked trip can still show up as a candidate and
-      accept more matches than it has room for. Fine at pilot scale with manual
-      coordination, but worth fixing (e.g. a trigger on match confirmation) before real
-      usage.
+- [x] **Seat inventory isn't decremented.** Fixed 2026-08-02
+      (`supabase/migrations/20260802080000_decrement_seats_on_confirm.sql`) - a trigger
+      on `matches` decrements `trips.seats_available` when a match is confirmed, and
+      blocks the confirm with a clear error ("This trip has no seats left.") if the trip
+      is already full, closing the race between two matches confirmed back-to-back.
+      `find_candidate_trips` already filtered on `seats_available > 0`, so a full trip
+      now automatically stops showing up as a candidate - verified end-to-end (decrement,
+      overbooking block, and candidate-list exclusion) against live test rows, cleaned up
+      after.
 
 ## Minor rough edges (found during final review, 2026-07-31)
 
