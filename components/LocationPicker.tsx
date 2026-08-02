@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { geocodeAddress, type GeocodeResult } from '../lib/geocode';
+import { autocompleteAddress, geocodeAddress, type GeocodeResult } from '../lib/geocode';
 
 const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY!;
 
@@ -20,9 +20,13 @@ export default function LocationPicker({ label, value, onChange }: Props) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const mapContainerRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   // The mount effect below only runs once, so it captures `value` at
   // mount time. If a search or click resolves before the async map load
   // finishes, that closure would be stale - read this ref instead so the
@@ -92,6 +96,58 @@ export default function LocationPicker({ label, value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounced address suggestions as the user types. 300ms + aborting the
+  // previous in-flight request keeps this well under LocationIQ's free-tier
+  // rate limit (2 req/sec) even while typing quickly.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (query.trim().length < 3 || query === valueRef.current?.label) {
+      setSuggestions([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      autocompleteAddress(query.trim(), controller.signal)
+        .then((results) => {
+          if (!controller.signal.aborted) {
+            setSuggestions(results);
+            setShowSuggestions(true);
+          }
+        })
+        .catch(() => {
+          // Suggestions are best-effort - an aborted or failed request just
+          // means no dropdown, not an error the user needs to see.
+        });
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
+  }, [query]);
+
+  async function applyResult(result: GeocodeResult) {
+    if (mapRef.current) {
+      const mod: any = await import('maplibre-gl');
+      const maplibregl = mod.default ?? mod;
+      setSelectedPoint(mapRef.current, maplibregl, result.lat, result.lng, result.label);
+    } else {
+      onChange(result);
+    }
+  }
+
+  async function handleSelectSuggestion(result: GeocodeResult) {
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setError(null);
+    setQuery(result.label);
+    await applyResult(result);
+  }
+
   function setSelectedPoint(
     map: any,
     maplibregl: any,
@@ -111,6 +167,7 @@ export default function LocationPicker({ label, value, onChange }: Props) {
   async function handleSearch() {
     if (!query.trim()) return;
     setError(null);
+    setShowSuggestions(false);
     setLoading(true);
     const result = await geocodeAddress(query.trim());
     setLoading(false);
@@ -120,27 +177,46 @@ export default function LocationPicker({ label, value, onChange }: Props) {
       return;
     }
 
-    if (mapRef.current) {
-      const mod: any = await import('maplibre-gl');
-      const maplibregl = mod.default ?? mod;
-      setSelectedPoint(mapRef.current, maplibregl, result.lat, result.lng, result.label);
-    } else {
-      onChange(result);
-    }
+    await applyResult(result);
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search an address"
-          value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={handleSearch}
-          editable={!loading}
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search an address"
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={handleSearch}
+            onFocus={() => {
+              if (suggestions.length) setShowSuggestions(true);
+            }}
+            onBlur={() => {
+              // Delay so a suggestion's onPress still registers before the
+              // dropdown unmounts - blur fires first on both web and touch.
+              setTimeout(() => setShowSuggestions(false), 150);
+            }}
+            editable={!loading}
+          />
+          {showSuggestions && suggestions.length > 0 ? (
+            <View style={styles.suggestions}>
+              {suggestions.map((suggestion, index) => (
+                <Pressable
+                  key={`${suggestion.lat},${suggestion.lng},${index}`}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectSuggestion(suggestion)}
+                >
+                  <Text style={styles.suggestionText} numberOfLines={1}>
+                    {suggestion.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
         <Pressable style={styles.searchButton} onPress={handleSearch} disabled={loading}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.searchButtonText}>Search</Text>}
         </Pressable>
@@ -169,15 +245,44 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: 'row',
     gap: 8,
+    position: 'relative',
+    zIndex: 20,
+  },
+  inputWrapper: {
+    flex: 1,
+    position: 'relative',
   },
   input: {
-    flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
+  },
+  suggestions: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    overflow: 'hidden',
+    zIndex: 20,
+    elevation: 20,
+  },
+  suggestionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#333',
   },
   searchButton: {
     backgroundColor: '#111',

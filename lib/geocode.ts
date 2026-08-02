@@ -30,3 +30,30 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult | nul
     label: result.display_name,
   };
 }
+
+export async function autocompleteAddress(
+  query: string,
+  signal?: AbortSignal,
+): Promise<GeocodeResult[]> {
+  const url = new URL('https://api.locationiq.com/v1/autocomplete');
+  url.searchParams.set('key', LOCATIONIQ_KEY);
+  url.searchParams.set('q', query);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', '5');
+
+  const response = await fetch(url.toString(), { signal });
+  if (!response.ok) {
+    return [];
+  }
+
+  const results = await response.json();
+  if (!Array.isArray(results)) {
+    return [];
+  }
+
+  return results.map((result: any) => ({
+    lat: parseFloat(result.lat),
+    lng: parseFloat(result.lon),
+    label: result.display_name,
+  }));
+}
