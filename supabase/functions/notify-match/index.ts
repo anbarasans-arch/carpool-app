@@ -8,6 +8,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const RESEND_SENDER_EMAIL = Deno.env.get("RESEND_SENDER_EMAIL")!;
 const RESEND_SENDER_NAME = Deno.env.get("RESEND_SENDER_NAME") ?? "carpool-app";
+const SITE_URL = Deno.env.get("SITE_URL") ?? "https://lets-carpool.com";
+const MY_MATCHES_URL = `${SITE_URL}/?tab=matches`;
 
 // Called right after a client action that already succeeded (a rider
 // proposing a match, or a driver confirming one) to send a heads-up email.
@@ -73,8 +75,8 @@ export default {
       event === "requested" ? "You have a new ride request" : "Your ride match is confirmed";
     const html =
       event === "requested"
-        ? "<p>Someone requested to join one of your trips. Open the app to confirm or decline.</p>"
-        : "<p>Your ride match is confirmed! Open the app to see your driver's contact info.</p>";
+        ? `<p>Someone requested to join one of your trips.</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to confirm or decline.</p>`
+        : `<p>Your ride match is confirmed!</p><p><a href="${MY_MATCHES_URL}">Open My matches</a> to see your driver's contact info.</p>`;
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",

@@ -13,10 +13,23 @@ import { supabase } from './lib/supabase';
 
 type Tab = 'post' | 'request' | 'matches' | 'rides';
 
+// Lets email notifications deep-link straight to a tab, e.g.
+// https://lets-carpool.com/?tab=matches - read once at mount, web only
+// (native has no window/URL to read from).
+function getInitialTab(): Tab {
+  if (typeof window !== 'undefined' && window.location) {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    if (requested === 'post' || requested === 'request' || requested === 'matches' || requested === 'rides') {
+      return requested;
+    }
+  }
+  return 'post';
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('post');
+  const [tab, setTab] = useState<Tab>(getInitialTab);
 
   function handleTabChange(nextTab: Tab) {
     setTab(nextTab);
