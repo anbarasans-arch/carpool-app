@@ -1,0 +1,11 @@
+-- Needed for "Option 2" proactive matching (see FOLLOWUPS.md): when a new
+-- trip or ride request is posted, notify anyone with an existing standing
+-- match candidate by email - triggered by a plain row insert, not a client
+-- action, so it has to happen from inside Postgres itself rather than the
+-- client-invoked Edge Function pattern used elsewhere (notify-match).
+-- pg_net lets a trigger make an outbound HTTP call (to Resend); vault
+-- (already available on this project) is where the Resend API key for
+-- these triggers is stored, since Postgres can't read Deno/Edge Function
+-- secrets directly. The actual secret is seeded separately, outside of
+-- version control - see the migration that uses it for details.
+create extension if not exists pg_net;

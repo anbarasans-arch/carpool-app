@@ -1,21 +1,12 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
+import CandidateTripsList from './CandidateTripsList';
 import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
 import { trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
-
-const METERS_PER_MILE = 1609.344;
-
-type Candidate = {
-  trip_id: string;
-  departure_time: string;
-  seats_available: number;
-  origin_distance_meters: number;
-  destination_distance_meters: number;
-};
 
 export default function RequestRideScreen() {
   const [origin, setOrigin] = useState<GeocodeResult | null>(null);
@@ -23,9 +14,7 @@ export default function RequestRideScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
-  const [requestedCosts, setRequestedCosts] = useState<Record<string, number>>({});
   const windowStartRef = useRef<any>(null);
   const windowEndRef = useRef<any>(null);
 
@@ -70,53 +59,20 @@ export default function RequestRideScreen() {
       })
       .select('id')
       .single();
+    setSubmitting(false);
 
     if (insertError || !inserted) {
-      setSubmitting(false);
       setError(insertError?.message ?? 'Could not save your request.');
       return;
     }
 
-    const { data: matches, error: matchError } = await supabase.rpc('find_candidate_trips', {
-      request_id: inserted.id,
-    });
-    setSubmitting(false);
-
-    if (matchError) {
-      setError(matchError.message);
-      return;
-    }
-
-    trackEvent('ride_requested', { candidate_count: matches?.length ?? 0 });
+    trackEvent('ride_requested');
     setSuccess(true);
-    setCandidates(matches ?? []);
     setRequestId(inserted.id);
-    setRequestedCosts({});
     setOrigin(null);
     setDestination(null);
     if (windowStartRef.current) windowStartRef.current.value = '';
     if (windowEndRef.current) windowEndRef.current.value = '';
-  }
-
-  async function handleRequestMatch(tripId: string) {
-    if (!requestId) return;
-    const { data: inserted, error: matchError } = await supabase
-      .from('matches')
-      .insert({ trip_id: tripId, ride_request_id: requestId })
-      .select('id, suggested_cost_split')
-      .single();
-    if (matchError) {
-      setError(matchError.message);
-      return;
-    }
-    setRequestedCosts((prev) => ({ ...prev, [tripId]: inserted?.suggested_cost_split ?? 0 }));
-    trackEvent('match_proposed');
-
-    // Best-effort notification - the match itself is already saved, so a
-    // failure here shouldn't surface as an error to the rider.
-    supabase.functions
-      .invoke('notify-match', { body: { match_id: inserted.id, event: 'proposed' } })
-      .catch(() => {});
   }
 
   return (
@@ -136,43 +92,7 @@ export default function RequestRideScreen() {
         {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Request ride</Text>}
       </Pressable>
 
-      {candidates ? (
-        <View style={styles.candidates}>
-          <Text style={styles.candidatesTitle}>
-            {candidates.length === 0
-              ? 'No matching trips yet - check back later.'
-              : `${candidates.length} matching trip${candidates.length === 1 ? '' : 's'}:`}
-          </Text>
-          {candidates.map((c) => (
-            <View key={c.trip_id} style={styles.candidateRow}>
-              <Text style={styles.candidateText}>
-                {new Date(c.departure_time).toLocaleString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
-              </Text>
-              <Text style={styles.candidateSubtext}>
-                {c.seats_available} seat{c.seats_available === 1 ? '' : 's'} available ·{' '}
-                {(c.origin_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your origin,{' '}
-                {(c.destination_distance_meters / METERS_PER_MILE).toFixed(1)} mi from your destination
-              </Text>
-              {c.trip_id in requestedCosts ? (
-                <Text style={styles.requestedText}>
-                  Requested - waiting on driver. Suggested cost split: $
-                  {requestedCosts[c.trip_id].toFixed(2)}
-                </Text>
-              ) : (
-                <Pressable style={styles.requestButton} onPress={() => handleRequestMatch(c.trip_id)}>
-                  <Text style={styles.requestButtonText}>Request this ride</Text>
-                </Pressable>
-              )}
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {requestId ? <CandidateTripsList requestId={requestId} /> : null}
     </ScrollView>
   );
 }
@@ -205,48 +125,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  candidates: {
-    width: '100%',
-    maxWidth: 480,
-    gap: 12,
-  },
-  candidatesTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  candidateRow: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 8,
-    padding: 12,
-    gap: 4,
-  },
-  candidateText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  candidateSubtext: {
-    fontSize: 13,
-    color: '#666',
-  },
-  requestButton: {
-    backgroundColor: '#111',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  requestButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  requestedText: {
-    fontSize: 13,
-    color: '#999',
-    fontStyle: 'italic',
-    marginTop: 4,
   },
 });

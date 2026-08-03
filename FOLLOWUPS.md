@@ -101,10 +101,31 @@ privacy items from the original spec - not repeated here.
         from migration `20260730125139` predating bidirectional matching) - replaced
         with a policy scoped to "whoever did not propose", which also generalizes the
         original self-confirmation protection correctly.
-      - Still one-shot, not proactive over time: a driver only sees candidates that
-        already existed *at the moment they post*. A ride request created *after* the
-        trip was posted still won't notify the driver on its own - that's the "option 2"
-        half of this (a trigger-based notification on new inserts), not yet built.
+- [x] **"Option 2": proactive notification when a match appears later, not just at
+      post-time.** Fixed 2026-08-03
+      (`supabase/migrations/20260803000000_enable_pg_net.sql` +
+      `20260803010000_proactive_match_notifications.sql`). A NEW trip or ride request now
+      emails anyone with a standing match, the moment it's posted - not just people who
+      happen to already exist as candidates. Since the person to notify isn't the one
+      performing the action, this runs from a Postgres trigger (`pg_net` for the
+      outbound HTTP call to Resend, `vault` holds the Resend API key since Postgres can't
+      read Deno/Edge Function secrets - the actual key was seeded via the Supabase SQL
+      Editor, never committed to a file). Deliberately does NOT create a `matches` row -
+      it's a heads-up, not a proposal, to avoid spamming the matches table and
+      misrepresenting consent. Verified end-to-end (both directions, including a trip
+      matching multiple open requests) by checking `net._http_response` for real Resend
+      message IDs, not just that the trigger ran.
+      - The email links to My Rides (`?tab=rides`), which previously had no way to view
+        candidates for an *existing* trip/request (`find_candidate_riders` /
+        `find_candidate_trips` were only ever called right after posting). Fixed by
+        extracting the candidate-list UI into shared `CandidateRidersList` /
+        `CandidateTripsList` components (used by PostTripScreen/RequestRideScreen *and*
+        a new "View candidates" toggle per trip/request in MyRidesScreen), so the
+        notification is actually actionable instead of a dead end.
+      - One real setup mistake caught during verification: the vault secret was first
+        seeded with the literal placeholder text from the instructions instead of the
+        real key (Resend rejected it with "API key is invalid") - fixed via
+        `vault.update_secret`. Worth remembering if this secret ever needs rotating.
 
 ## Minor rough edges (found during final review, 2026-07-31)
 

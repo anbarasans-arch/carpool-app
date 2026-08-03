@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import CandidateRidersList from './CandidateRidersList';
+import CandidateTripsList from './CandidateTripsList';
 import { supabase } from '../lib/supabase';
 
 type Trip = {
@@ -26,6 +28,8 @@ export default function MyRidesScreen() {
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
 
   async function load() {
     setError(null);
@@ -100,6 +104,17 @@ export default function MyRidesScreen() {
                 {new Date(t.departure_time).toLocaleString()} · {t.seats_available} seat
                 {t.seats_available === 1 ? '' : 's'} · {t.status}
               </Text>
+              {t.status === 'active' && t.seats_available > 0 ? (
+                <Pressable
+                  style={styles.viewButton}
+                  onPress={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}
+                >
+                  <Text style={styles.viewButtonText}>
+                    {expandedTripId === t.id ? 'Hide candidates' : 'View candidates'}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {expandedTripId === t.id ? <CandidateRidersList tripId={t.id} /> : null}
             </View>
           ))
         )}
@@ -119,6 +134,17 @@ export default function MyRidesScreen() {
                 {new Date(r.desired_time_start).toLocaleString()} - {new Date(r.desired_time_end).toLocaleTimeString()}{' '}
                 · {r.status}
               </Text>
+              {r.status === 'open' ? (
+                <Pressable
+                  style={styles.viewButton}
+                  onPress={() => setExpandedRequestId(expandedRequestId === r.id ? null : r.id)}
+                >
+                  <Text style={styles.viewButtonText}>
+                    {expandedRequestId === r.id ? 'Hide candidates' : 'View candidates'}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {expandedRequestId === r.id ? <CandidateTripsList requestId={r.id} /> : null}
             </View>
           ))
         )}
@@ -164,7 +190,7 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     borderRadius: 8,
     padding: 12,
-    gap: 4,
+    gap: 8,
   },
   rowTitle: {
     fontSize: 14,
@@ -173,5 +199,18 @@ const styles = StyleSheet.create({
   rowSubtext: {
     fontSize: 13,
     color: '#666',
+  },
+  viewButton: {
+    borderWidth: 1,
+    borderColor: '#111',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+  },
+  viewButtonText: {
+    color: '#111',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
