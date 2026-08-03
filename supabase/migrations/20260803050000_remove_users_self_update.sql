@@ -1,0 +1,19 @@
+-- CRITICAL FIX (found during full-repo security review, 2026-08-03):
+-- "Users can update own profile" (migration 20260729043340) let any signed-
+-- in user overwrite their OWN public.users.email to anything, with no
+-- re-verification - confirmed exploitable (a test account successfully
+-- changed its email to an arbitrary address, including one impersonating
+-- a real person's inbox).
+--
+-- This matters beyond simple profile tampering because email is exactly
+-- what get_match_contact() reveals to a matched participant, and what
+-- notify-match / the notify_* triggers send transactional email to (see
+-- 20260803010000, 20260803040000). An attacker could redirect the emails
+-- meant for their own account to any third-party address, or set their
+-- displayed contact email to impersonate someone else once matched.
+--
+-- No app feature updates this table client-side (grepped the whole repo -
+-- no `.from('users').update(...)` call anywhere), so there's no legitimate
+-- use case to preserve. email/verified_at should only ever be set by
+-- handle_new_auth_user, driven by the real OTP-verified auth.users row.
+drop policy "Users can update own profile" on public.users;
