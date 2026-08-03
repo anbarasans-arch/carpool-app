@@ -20,8 +20,9 @@ ride-hailing business — closer to a company-sponsored rideshare board than an 
 - **Auth:** work email only. User enters email → receives a 6-digit one-time code →
   enters code → verified → gains access. **Only emails ending in `@fmr.com` may
   request a code at all** — reject before sending, don't just reject after.
-- **Geofence:** all trips must have origin and destination within **50 miles** of the
-  Dallas office coordinates. Reject trip creation outside this radius.
+- **Geofence:** all trips must have origin and destination within **80 miles** (widened
+  2026-08-03 from an original 50mi) of the Dallas office coordinates. Reject trip
+  creation outside this radius.
 - **Scale target:** up to **20,000 users total** (drivers + riders combined), single
   metro area. This is a small scale for the stack below — no need for heavy geo-indexing
   (H3, Redis) at this size; plain PostGIS queries are fine indefinitely.
