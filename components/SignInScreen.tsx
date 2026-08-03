@@ -54,10 +54,10 @@ export default function SignInScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Sign in</Text>
-        <Text style={styles.subtitle}>Use your @fmr.com work email</Text>
+        <Text style={styles.subtitle}>Enter your email</Text>
         <TextInput
           style={styles.input}
-          placeholder="you@fmr.com"
+          placeholder="you@example.com"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"

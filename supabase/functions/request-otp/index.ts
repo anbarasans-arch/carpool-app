@@ -2,22 +2,25 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
-// Only @fmr.com addresses may request a code. This check must happen here,
-// before signInWithOtp is ever called - the client must not be able to
-// trigger an OTP email by calling Supabase Auth directly.
+// Normally only @fmr.com addresses may request a code, checked here before
+// signInWithOtp is ever called - the client must not be able to trigger an
+// OTP email by calling Supabase Auth directly.
 //
-// TEMPORARY TEST MODE (added 2026-08-02): @gmail.com is allowed too, so the
-// solo builder can test driver + rider flows via Gmail plus-addressing
-// (e.g. you+driver@gmail.com / you+rider@gmail.com) without spamming their
-// own @fmr.com inbox or needing multiple corporate accounts. REMOVE the
-// "gmail.com" entry (and the matching DB check constraint change in
-// supabase/migrations/20260802*_allow_test_domain.sql) before any wider
-// pilot rollout - see FOLLOWUPS.md.
-const ALLOWED_DOMAINS = ["fmr.com", "gmail.com"];
-const ALLOWED_EMAIL = new RegExp(
-  `^[^\\s@]+@(${ALLOWED_DOMAINS.map((d) => d.replace(".", "\\.")).join("|")})$`,
-  "i",
-);
+// TEMPORARY VALIDATION MODE (widened 2026-08-03): sign-in is open to ANY
+// email domain right now, not just @fmr.com - the company wouldn't sanction
+// sending automated validation/test emails to real @fmr.com inboxes, so
+// broader beta testers (not just the solo builder) need a way in that
+// doesn't touch fmr.com at all. This is a real, deliberate widening of who
+// can create an account - anyone who finds the URL can sign up and see
+// other testers' contact info once matched. Fine for an invite-only
+// validation group, NOT fine left on for a real internal rollout.
+// SET EMAIL_VALIDATION_MODE = false (and revert the matching DB check
+// constraint in supabase/migrations/20260802*_allow_test_domain.sql /
+// 20260803*_open_all_domains.sql) before that happens - see FOLLOWUPS.md.
+const EMAIL_VALIDATION_MODE = true;
+const FMR_ONLY_EMAIL = /^[^\s@]+@fmr\.com$/i;
+const ANY_VALID_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ALLOWED_EMAIL = EMAIL_VALIDATION_MODE ? ANY_VALID_EMAIL : FMR_ONLY_EMAIL;
 
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
@@ -34,7 +37,11 @@ export default {
 
     if (typeof email !== "string" || !ALLOWED_EMAIL.test(email)) {
       return Response.json(
-        { error: "Only @fmr.com email addresses may request a sign-in code." },
+        {
+          error: EMAIL_VALIDATION_MODE
+            ? "Enter a valid email address."
+            : "Only @fmr.com email addresses may request a sign-in code.",
+        },
         { status: 403 },
       );
     }

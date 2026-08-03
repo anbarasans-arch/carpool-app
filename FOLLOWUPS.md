@@ -7,16 +7,21 @@ there's a record of what was considered.
 See also `PROJECT.md` section 7 ("Open flags") for the pre-existing HR/Legal and data
 privacy items from the original spec - not repeated here.
 
-## ⚠️ Temporary test mode - revert before wider rollout
+## ⚠️ Temporary validation mode - revert before real internal rollout
 
-- [ ] **@gmail.com is temporarily allowed to sign in, alongside @fmr.com.** Added
-      2026-08-02 so the solo builder could test driver + rider flows via Gmail
-      plus-addressing (e.g. `you+driver@gmail.com` / `you+rider@gmail.com`) without
-      needing multiple real @fmr.com inboxes. Two places to revert before any wider
-      pilot: remove `"gmail.com"` from `ALLOWED_DOMAINS` in
-      `supabase/functions/request-otp/index.ts` (redeploy the function after), and run
-      a migration that drops/recreates `users_email_check` back to `@fmr.com` only
-      (undoes `supabase/migrations/20260802060000_allow_test_domain.sql`).
+- [ ] **Sign-in is open to ANY email domain, not just @fmr.com.** Widened 2026-08-03
+      (supersedes the narrower 2026-08-02 @gmail.com-only allowance below) - the company
+      wouldn't sanction sending automated validation/test emails to real @fmr.com
+      inboxes, so broader beta testers (not just the solo builder) need a way in that
+      doesn't touch fmr.com. **Real, deliberate risk while this is on:** anyone who finds
+      the URL can create an account and see other testers' contact info once matched -
+      fine for an invite-only validation group, not fine left on indefinitely. Two places
+      to revert before a real internal rollout: set `EMAIL_VALIDATION_MODE = false` in
+      `supabase/functions/request-otp/index.ts` (redeploy after) and also revert its
+      sign-in copy ("Enter your email" / "you@example.com" back to the @fmr.com-specific
+      versions), and run a migration reverting `users_email_check` back to `@fmr.com`
+      only (undoes `supabase/migrations/20260803020000_open_all_domains_validation.sql`,
+      which itself superseded `20260802060000_allow_test_domain.sql`).
 
 ## Infra / deployment
 
