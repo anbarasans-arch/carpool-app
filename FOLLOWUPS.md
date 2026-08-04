@@ -9,19 +9,22 @@ privacy items from the original spec - not repeated here.
 
 ## ⚠️ Temporary validation mode - revert before real internal rollout
 
-- [ ] **Sign-in is open to ANY email domain, not just @fmr.com.** Widened 2026-08-03
-      (supersedes the narrower 2026-08-02 @gmail.com-only allowance below) - the company
-      wouldn't sanction sending automated validation/test emails to real @fmr.com
-      inboxes, so broader beta testers (not just the solo builder) need a way in that
-      doesn't touch fmr.com. **Real, deliberate risk while this is on:** anyone who finds
-      the URL can create an account and see other testers' contact info once matched -
-      fine for an invite-only validation group, not fine left on indefinitely. Two places
-      to revert before a real internal rollout: set `EMAIL_VALIDATION_MODE = false` in
-      `supabase/functions/request-otp/index.ts` (redeploy after) and also revert its
-      sign-in copy ("Enter your email" / "you@example.com" back to the @fmr.com-specific
-      versions), and run a migration reverting `users_email_check` back to `@fmr.com`
-      only (undoes `supabase/migrations/20260803020000_open_all_domains_validation.sql`,
-      which itself superseded `20260802060000_allow_test_domain.sql`).
+- [ ] **Sign-in is open to ANY email domain, not just the company's.** Widened
+      2026-08-03 (supersedes the narrower 2026-08-02 @gmail.com-only allowance below) -
+      the company wouldn't sanction sending automated validation/test emails to real
+      work inboxes, so broader beta testers (not just the solo builder) need a way in
+      that doesn't touch those inboxes. **Real, deliberate risk while this is on:**
+      anyone who finds the URL can create an account and see other testers' contact
+      info once matched - fine for an invite-only validation group, not fine left on
+      indefinitely. Two places to revert before a real internal rollout: set
+      `EMAIL_VALIDATION_MODE = false` in `supabase/functions/request-otp/index.ts`
+      (redeploy after - the actual domain it'll enforce lives in the
+      `ALLOWED_EMAIL_DOMAIN` Supabase secret, not in this repo) and also revert its
+      sign-in copy ("Enter your email" / "you@example.com" back to the
+      company-domain-specific versions), and run a migration reverting
+      `users_email_check` back to the company-domain-only check (undoes
+      `supabase/migrations/20260803020000_open_all_domains_validation.sql`, which
+      itself superseded `20260802060000_allow_test_domain.sql`).
 
 ## Infra / deployment
 
@@ -32,7 +35,7 @@ privacy items from the original spec - not repeated here.
       all added in Cloudflare DNS). Sender updated in both places - `.env.local` /
       `supabase config push` (Auth SMTP) and `supabase secrets set` (the `notify-match`
       function) - to `noreply@mail.lets-carpool.com` / "Let's Carpool". Real delivery to
-      an actual `@fmr.com` inbox confirmed working, including the code-based template
+      an actual company-domain inbox confirmed working, including the code-based template
       (not just a link). First attempt landed in spam/was briefly delayed - expected for
       a brand-new sending domain with no reputation yet; resolved after adding DMARC.
 - [x] **Connect the root domain to the Vercel app.** Added a CNAME at `@` in Cloudflare

@@ -2,7 +2,7 @@
 
 **Status:** Phases 0-2 done, sending domain verified (2026-08-01), custom domain live
 (2026-08-02) - core loop + demo polish complete, real email delivery (OTP + match
-notifications) to actual @fmr.com inboxes confirmed working end-to-end, app now live at
+notifications) to actual company work inboxes confirmed working end-to-end, app now live at
 https://lets-carpool.com. MVP is pilot-demo-ready. Phase 3 only if the company adopts it.
 **Builder:** Solo, non-technical, ~few hours/week, building with Claude Code
 **Goal:** MVP to demo internally; company may adopt and move to their own cloud after
@@ -18,10 +18,12 @@ ride-hailing business — closer to a company-sponsored rideshare board than an 
 ## 2. Hard requirements
 
 - **Auth:** work email only. User enters email → receives a 6-digit one-time code →
-  enters code → verified → gains access. **Only emails ending in `@fmr.com` may
-  request a code at all** — reject before sending, don't just reject after.
+  enters code → verified → gains access. **Only emails ending in the company's work
+  email domain may request a code at all** (the actual domain is a Supabase secret,
+  `ALLOWED_EMAIL_DOMAIN` - not committed to this repo) — reject before sending, don't
+  just reject after.
 - **Geofence:** all trips must have origin and destination within **80 miles** (widened
-  2026-08-03 from an original 50mi) of the Dallas office coordinates. Reject trip
+  2026-08-03 from an original 50mi) of the company's office coordinates. Reject trip
   creation outside this radius.
 - **Scale target:** up to **20,000 users total** (drivers + riders combined), single
   metro area. This is a small scale for the stack below — no need for heavy geo-indexing
@@ -59,7 +61,7 @@ Do not build these yet, even if they seem natural to add:
 |---|---|---|
 | App | **React Native via Expo, with Expo web (React Native Web) enabled** — one codebase for Web, iOS, and Android. Build web first (deployed to Vercel), add iOS/Android later via EAS Build, distributed internally (TestFlight / Play Console internal testing track) — not a public store listing | One codebase reaches all three target platforms instead of maintaining a separate Next.js app. Web gives the fastest iteration loop for early phases (no simulator, just a browser reload) and an easy demo link; native builds get added once the core loop is proven, without a rewrite. Internal-only distribution skips public app review entirely. EAS Build produces installable binaries without needing Xcode/Android Studio locally. One-time setup cost: $99/yr Apple Developer account + TestFlight/Play internal track configuration, needed only when the iOS/Android phase starts. |
 | Backend + DB | **Supabase** (hosted Postgres + PostGIS + Auth + Realtime + Edge Functions) | One managed service covers database, geospatial queries, auth, and serverless functions. Free tier covers MVP scale. Open source under the hood (you could self-host later), zero ops for now. |
-| Auth | Supabase Auth, **email OTP**, with a domain check in an Edge Function before issuing a code | Rejects non-`@fmr.com` emails before a code is ever sent. |
+| Auth | Supabase Auth, **email OTP**, with a domain check in an Edge Function before issuing a code | Rejects emails outside the company's work domain before a code is ever sent. |
 | Matching logic | Postgres/PostGIS `ST_DWithin` + time-window filter, run as a Supabase Edge Function or simple query | Plenty fast at 20k users. No Redis, no H3 — that complexity solves a problem you don't have at this scale. |
 | Maps (display) | **MapLibre GL JS** | Free, open source, no Google Maps billing risk. |
 | Map tiles | Hosted free tier (e.g. MapTiler or Stadia Maps free plan) for MVP | Self-hosting tiles is real ops work — defer until usage actually justifies it. |
@@ -104,7 +106,7 @@ matches
 **Phase 0 — Foundation (few sessions) - DONE (2026-07-30)**
 - [x] Supabase project setup, Postgres schema, PostGIS enabled
 - [x] Email OTP auth working end-to-end, with domain restriction. Real delivery to
-      arbitrary @fmr.com addresses confirmed working (2026-08-01) after verifying
+      arbitrary company-domain addresses confirmed working (2026-08-01) after verifying
       `mail.lets-carpool.com` with Resend - see FOLLOWUPS.md.
 - [x] Expo app scaffold (web target via Expo web/React Native Web), deployed to Vercel,
       auth flow confirmed live in browser. Custom domain `lets-carpool.com` connected
@@ -147,8 +149,8 @@ matches
       scrollable). Verified at 360px, 375px, tablet, and desktop; everything else
       already adapted correctly via existing flexbox/maxWidth layouts.
 - [x] Geofence validation (reject trips outside 50mi radius) with a clear error message.
-      Office confirmed: 1 Destiny Way, Westlake, TX 76262 (32.9817475, -97.1906054).
-      `enforce_trip_geofence_trigger` rejects trip insert/update when origin or
+      Office coordinates confirmed with the company and hardcoded into the geofence
+      migration (not repeated here). `enforce_trip_geofence_trigger` rejects trip insert/update when origin or
       destination is outside 50mi, scoped to `trips` only (see FOLLOWUPS.md re:
       ride_requests). Verified end-to-end including through the real UI.
 
