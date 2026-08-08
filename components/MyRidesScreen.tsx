@@ -12,6 +12,7 @@ type Trip = {
   departure_time: string;
   seats_available: number;
   status: string;
+  created_at: string;
 };
 
 type RideRequest = {
@@ -21,7 +22,24 @@ type RideRequest = {
   desired_time_start: string;
   desired_time_end: string;
   status: string;
+  created_at: string;
 };
+
+// Not-expired items first, then expired ones - within each group, newest
+// (most recently posted) first. Expiration is derived from the time
+// window, not the stored status column - nothing in this app proactively
+// flips status when time passes, so status alone can't be trusted to know
+// whether a trip/request is still current.
+function sortByActiveThenNew<T extends { created_at: string }>(
+  items: T[],
+  isExpired: (item: T) => boolean,
+): T[] {
+  return [...items].sort((a, b) => {
+    const expiredDiff = Number(isExpired(a)) - Number(isExpired(b));
+    if (expiredDiff !== 0) return expiredDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
 
 export default function MyRidesScreen() {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -44,14 +62,12 @@ export default function MyRidesScreen() {
     const [tripsResult, requestsResult] = await Promise.all([
       supabase
         .from('trips')
-        .select('id, origin_label, destination_label, departure_time, seats_available, status')
-        .eq('driver_id', user.id)
-        .order('departure_time', { ascending: false }),
+        .select('id, origin_label, destination_label, departure_time, seats_available, status, created_at')
+        .eq('driver_id', user.id),
       supabase
         .from('ride_requests')
-        .select('id, origin_label, destination_label, desired_time_start, desired_time_end, status')
-        .eq('rider_id', user.id)
-        .order('desired_time_start', { ascending: false }),
+        .select('id, origin_label, destination_label, desired_time_start, desired_time_end, status, created_at')
+        .eq('rider_id', user.id),
     ]);
 
     setLoading(false);
@@ -65,8 +81,13 @@ export default function MyRidesScreen() {
       return;
     }
 
-    setTrips(tripsResult.data ?? []);
-    setRideRequests(requestsResult.data ?? []);
+    const now = Date.now();
+    setTrips(
+      sortByActiveThenNew(tripsResult.data ?? [], (t) => new Date(t.departure_time).getTime() < now),
+    );
+    setRideRequests(
+      sortByActiveThenNew(requestsResult.data ?? [], (r) => new Date(r.desired_time_end).getTime() < now),
+    );
   }
 
   useEffect(() => {
@@ -95,28 +116,33 @@ export default function MyRidesScreen() {
         {trips.length === 0 ? (
           <Text style={styles.empty}>You haven't posted any trips yet.</Text>
         ) : (
-          trips.map((t) => (
-            <View key={t.id} style={styles.row}>
-              <Text style={styles.rowTitle}>
-                {t.origin_label} → {t.destination_label}
-              </Text>
-              <Text style={styles.rowSubtext}>
-                {new Date(t.departure_time).toLocaleString()} · {t.seats_available} seat
-                {t.seats_available === 1 ? '' : 's'} · {t.status}
-              </Text>
-              {t.status === 'active' && t.seats_available > 0 ? (
-                <Pressable
-                  style={styles.viewButton}
-                  onPress={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}
-                >
-                  <Text style={styles.viewButtonText}>
-                    {expandedTripId === t.id ? 'Hide candidates' : 'View candidates'}
-                  </Text>
-                </Pressable>
-              ) : null}
-              {expandedTripId === t.id ? <CandidateRidersList tripId={t.id} /> : null}
-            </View>
-          ))
+          trips.map((t) => {
+            const isExpired = new Date(t.departure_time).getTime() < Date.now();
+            const displayStatus = isExpired && t.status === 'active' ? 'expired' : t.status;
+            const canViewCandidates = !isExpired && t.status === 'active' && t.seats_available > 0;
+            return (
+              <View key={t.id} style={styles.row}>
+                <Text style={styles.rowTitle}>
+                  {t.origin_label} → {t.destination_label}
+                </Text>
+                <Text style={styles.rowSubtext}>
+                  {new Date(t.departure_time).toLocaleString()} · {t.seats_available} seat
+                  {t.seats_available === 1 ? '' : 's'} · {displayStatus}
+                </Text>
+                {canViewCandidates ? (
+                  <Pressable
+                    style={styles.viewButton}
+                    onPress={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}
+                  >
+                    <Text style={styles.viewButtonText}>
+                      {expandedTripId === t.id ? 'Hide candidates' : 'View candidates'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {expandedTripId === t.id ? <CandidateRidersList tripId={t.id} /> : null}
+              </View>
+            );
+          })
         )}
       </View>
 
@@ -125,28 +151,33 @@ export default function MyRidesScreen() {
         {rideRequests.length === 0 ? (
           <Text style={styles.empty}>You haven't requested any rides yet.</Text>
         ) : (
-          rideRequests.map((r) => (
-            <View key={r.id} style={styles.row}>
-              <Text style={styles.rowTitle}>
-                {r.origin_label} → {r.destination_label}
-              </Text>
-              <Text style={styles.rowSubtext}>
-                {new Date(r.desired_time_start).toLocaleString()} - {new Date(r.desired_time_end).toLocaleTimeString()}{' '}
-                · {r.status}
-              </Text>
-              {r.status === 'open' ? (
-                <Pressable
-                  style={styles.viewButton}
-                  onPress={() => setExpandedRequestId(expandedRequestId === r.id ? null : r.id)}
-                >
-                  <Text style={styles.viewButtonText}>
-                    {expandedRequestId === r.id ? 'Hide candidates' : 'View candidates'}
-                  </Text>
-                </Pressable>
-              ) : null}
-              {expandedRequestId === r.id ? <CandidateTripsList requestId={r.id} /> : null}
-            </View>
-          ))
+          rideRequests.map((r) => {
+            const isExpired = new Date(r.desired_time_end).getTime() < Date.now();
+            const displayStatus = isExpired && r.status === 'open' ? 'expired' : r.status;
+            const canViewCandidates = !isExpired && r.status === 'open';
+            return (
+              <View key={r.id} style={styles.row}>
+                <Text style={styles.rowTitle}>
+                  {r.origin_label} → {r.destination_label}
+                </Text>
+                <Text style={styles.rowSubtext}>
+                  {new Date(r.desired_time_start).toLocaleString()} -{' '}
+                  {new Date(r.desired_time_end).toLocaleTimeString()} · {displayStatus}
+                </Text>
+                {canViewCandidates ? (
+                  <Pressable
+                    style={styles.viewButton}
+                    onPress={() => setExpandedRequestId(expandedRequestId === r.id ? null : r.id)}
+                  >
+                    <Text style={styles.viewButtonText}>
+                      {expandedRequestId === r.id ? 'Hide candidates' : 'View candidates'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {expandedRequestId === r.id ? <CandidateTripsList requestId={r.id} /> : null}
+              </View>
+            );
+          })
         )}
       </View>
     </ScrollView>
