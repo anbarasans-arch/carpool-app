@@ -108,11 +108,18 @@ export default function MatchesScreen() {
             : isProposer
               ? 'You requested this ride'
               : 'A driver invited you to this ride';
+          // Nothing flips a match's status when its trip's departure time
+          // passes without a response - derive it here instead, same
+          // approach as MyRidesScreen, rather than trusting a stale
+          // "pending" that no longer means anything actionable.
+          const isExpired =
+            m.status === 'pending' && !!m.trips && new Date(m.trips.departure_time).getTime() < Date.now();
+          const displayStatus = isExpired ? 'expired' : m.status;
           return (
             <View key={m.id} style={styles.row}>
               <Text style={styles.rowTitle}>{role}</Text>
               <Text style={styles.rowSubtext}>
-                Status: {m.status}
+                Status: {displayStatus}
                 {m.trips ? ` · Departs ${new Date(m.trips.departure_time).toLocaleString()}` : ''}
               </Text>
               {m.suggested_cost_split != null ? (
@@ -123,7 +130,7 @@ export default function MatchesScreen() {
               {m.status === 'confirmed' && contacts[m.id] ? (
                 <Text style={styles.contact}>Contact: {contacts[m.id]}</Text>
               ) : null}
-              {m.status === 'pending' && !isProposer ? (
+              {m.status === 'pending' && !isProposer && !isExpired ? (
                 <View style={styles.actions}>
                   <Pressable style={styles.confirmButton} onPress={() => respond(m.id, 'confirmed')}>
                     <Text style={styles.confirmButtonText}>Confirm</Text>
