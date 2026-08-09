@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 
 import CandidateRidersList from './CandidateRidersList';
 import CandidateTripsList from './CandidateTripsList';
+import { groupByDate } from '../lib/dateGroups';
 import { supabase } from '../lib/supabase';
 
 type Trip = {
@@ -25,20 +26,14 @@ type RideRequest = {
   created_at: string;
 };
 
-// Not-expired items first, then expired ones - within each group, newest
-// (most recently posted) first. Expiration is derived from the time
-// window, not the stored status column - nothing in this app proactively
-// flips status when time passes, so status alone can't be trusted to know
-// whether a trip/request is still current.
-function sortByActiveThenNew<T extends { created_at: string }>(
-  items: T[],
-  isExpired: (item: T) => boolean,
-): T[] {
-  return [...items].sort((a, b) => {
-    const expiredDiff = Number(isExpired(a)) - Number(isExpired(b));
-    if (expiredDiff !== 0) return expiredDiff;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+function toggleId(ids: Set<string>, id: string): Set<string> {
+  const next = new Set(ids);
+  if (next.has(id)) {
+    next.delete(id);
+  } else {
+    next.add(id);
+  }
+  return next;
 }
 
 export default function MyRidesScreen() {
@@ -46,8 +41,8 @@ export default function MyRidesScreen() {
   const [rideRequests, setRideRequests] = useState<RideRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
-  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
+  const [expandedTripIds, setExpandedTripIds] = useState<Set<string>>(new Set());
+  const [expandedRequestIds, setExpandedRequestIds] = useState<Set<string>>(new Set());
 
   async function load() {
     setError(null);
@@ -81,13 +76,8 @@ export default function MyRidesScreen() {
       return;
     }
 
-    const now = Date.now();
-    setTrips(
-      sortByActiveThenNew(tripsResult.data ?? [], (t) => new Date(t.departure_time).getTime() < now),
-    );
-    setRideRequests(
-      sortByActiveThenNew(requestsResult.data ?? [], (r) => new Date(r.desired_time_end).getTime() < now),
-    );
+    setTrips(tripsResult.data ?? []);
+    setRideRequests(requestsResult.data ?? []);
   }
 
   useEffect(() => {
@@ -101,6 +91,17 @@ export default function MyRidesScreen() {
       </View>
     );
   }
+
+  const tripGroups = groupByDate(
+    trips,
+    (t) => t.departure_time,
+    (t) => t.created_at,
+  );
+  const requestGroups = groupByDate(
+    rideRequests,
+    (r) => r.desired_time_start,
+    (r) => r.created_at,
+  );
 
   return (
     <ScrollView
@@ -116,33 +117,47 @@ export default function MyRidesScreen() {
         {trips.length === 0 ? (
           <Text style={styles.empty}>You haven't posted any trips yet.</Text>
         ) : (
-          trips.map((t) => {
-            const isExpired = new Date(t.departure_time).getTime() < Date.now();
-            const displayStatus = isExpired && t.status === 'active' ? 'expired' : t.status;
-            const canViewCandidates = !isExpired && t.status === 'active' && t.seats_available > 0;
-            return (
-              <View key={t.id} style={styles.row}>
-                <Text style={styles.rowTitle}>
-                  {t.origin_label} → {t.destination_label}
-                </Text>
-                <Text style={styles.rowSubtext}>
-                  {new Date(t.departure_time).toLocaleString()} · {t.seats_available} seat
-                  {t.seats_available === 1 ? '' : 's'} · {displayStatus}
-                </Text>
-                {canViewCandidates ? (
-                  <Pressable
-                    style={styles.viewButton}
-                    onPress={() => setExpandedTripId(expandedTripId === t.id ? null : t.id)}
-                  >
-                    <Text style={styles.viewButtonText}>
-                      {expandedTripId === t.id ? 'Hide candidates' : 'View candidates'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {expandedTripId === t.id ? <CandidateRidersList tripId={t.id} /> : null}
-              </View>
-            );
-          })
+          tripGroups.map((group) => (
+            <View key={group.dateKey} style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>{group.dateLabel}</Text>
+              {group.items.map((t) => {
+                const isExpired = new Date(t.departure_time).getTime() < Date.now();
+                const displayStatus = isExpired && t.status === 'active' ? 'expired' : t.status;
+                const canViewCandidates = !isExpired && t.status === 'active' && t.seats_available > 0;
+                const isOpen = expandedTripIds.has(t.id);
+                return (
+                  <View key={t.id} style={styles.card}>
+                    <Pressable
+                      style={styles.cardHeader}
+                      onPress={() => setExpandedTripIds((prev) => toggleId(prev, t.id))}
+                    >
+                      <View style={styles.cardHeaderText}>
+                        <Text style={styles.rowTitle}>
+                          {t.origin_label} → {t.destination_label}
+                        </Text>
+                        <Text style={styles.rowSubtext}>
+                          {new Date(t.departure_time).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}{' '}
+                          · {displayStatus}
+                        </Text>
+                      </View>
+                      <Text style={styles.toggle}>{isOpen ? '−' : '+'}</Text>
+                    </Pressable>
+                    {isOpen ? (
+                      <View style={styles.cardDetails}>
+                        <Text style={styles.rowSubtext}>
+                          {t.seats_available} seat{t.seats_available === 1 ? '' : 's'} available
+                        </Text>
+                        {canViewCandidates ? <CandidateRidersList tripId={t.id} /> : null}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ))
         )}
       </View>
 
@@ -151,33 +166,48 @@ export default function MyRidesScreen() {
         {rideRequests.length === 0 ? (
           <Text style={styles.empty}>You haven't requested any rides yet.</Text>
         ) : (
-          rideRequests.map((r) => {
-            const isExpired = new Date(r.desired_time_end).getTime() < Date.now();
-            const displayStatus = isExpired && r.status === 'open' ? 'expired' : r.status;
-            const canViewCandidates = !isExpired && r.status === 'open';
-            return (
-              <View key={r.id} style={styles.row}>
-                <Text style={styles.rowTitle}>
-                  {r.origin_label} → {r.destination_label}
-                </Text>
-                <Text style={styles.rowSubtext}>
-                  {new Date(r.desired_time_start).toLocaleString()} -{' '}
-                  {new Date(r.desired_time_end).toLocaleTimeString()} · {displayStatus}
-                </Text>
-                {canViewCandidates ? (
-                  <Pressable
-                    style={styles.viewButton}
-                    onPress={() => setExpandedRequestId(expandedRequestId === r.id ? null : r.id)}
-                  >
-                    <Text style={styles.viewButtonText}>
-                      {expandedRequestId === r.id ? 'Hide candidates' : 'View candidates'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {expandedRequestId === r.id ? <CandidateTripsList requestId={r.id} /> : null}
-              </View>
-            );
-          })
+          requestGroups.map((group) => (
+            <View key={group.dateKey} style={styles.dateGroup}>
+              <Text style={styles.dateLabel}>{group.dateLabel}</Text>
+              {group.items.map((r) => {
+                const isExpired = new Date(r.desired_time_end).getTime() < Date.now();
+                const displayStatus = isExpired && r.status === 'open' ? 'expired' : r.status;
+                const canViewCandidates = !isExpired && r.status === 'open';
+                const isOpen = expandedRequestIds.has(r.id);
+                return (
+                  <View key={r.id} style={styles.card}>
+                    <Pressable
+                      style={styles.cardHeader}
+                      onPress={() => setExpandedRequestIds((prev) => toggleId(prev, r.id))}
+                    >
+                      <View style={styles.cardHeaderText}>
+                        <Text style={styles.rowTitle}>
+                          {r.origin_label} → {r.destination_label}
+                        </Text>
+                        <Text style={styles.rowSubtext}>
+                          {new Date(r.desired_time_start).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}{' '}
+                          - {new Date(r.desired_time_end).toLocaleTimeString(undefined, {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}{' '}
+                          · {displayStatus}
+                        </Text>
+                      </View>
+                      <Text style={styles.toggle}>{isOpen ? '−' : '+'}</Text>
+                    </Pressable>
+                    {isOpen && canViewCandidates ? (
+                      <View style={styles.cardDetails}>
+                        <CandidateTripsList requestId={r.id} />
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ))
         )}
       </View>
     </ScrollView>
@@ -206,7 +236,7 @@ const styles = StyleSheet.create({
   section: {
     width: '100%',
     maxWidth: 480,
-    gap: 8,
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 16,
@@ -216,12 +246,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  row: {
+  dateGroup: {
+    gap: 6,
+  },
+  dateLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#999',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  card: {
     borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 8,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 12,
     gap: 8,
+  },
+  cardHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  cardDetails: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  toggle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111',
+    width: 24,
+    textAlign: 'center',
   },
   rowTitle: {
     fontSize: 14,
@@ -230,18 +292,5 @@ const styles = StyleSheet.create({
   rowSubtext: {
     fontSize: 13,
     color: '#666',
-  },
-  viewButton: {
-    borderWidth: 1,
-    borderColor: '#111',
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    alignSelf: 'flex-start',
-  },
-  viewButtonText: {
-    color: '#111',
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
