@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { trackEvent } from '../lib/analytics';
+import { trackError, trackEvent } from '../lib/analytics';
 import { groupByDate } from '../lib/dateGroups';
 import { supabase } from '../lib/supabase';
 
@@ -51,6 +51,7 @@ export default function MatchesScreen() {
 
     if (fetchError) {
       setError(fetchError.message);
+      trackError('MatchesScreen.load', fetchError.message);
       return;
     }
 
@@ -75,6 +76,7 @@ export default function MatchesScreen() {
     const { error: updateError } = await supabase.from('matches').update({ status }).eq('id', matchId);
     if (updateError) {
       setError(updateError.message);
+      trackError('MatchesScreen.respond', updateError.message, { matchId, attemptedStatus: status });
       return;
     }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { trackError } from '../lib/analytics';
 import { autocompleteAddress, geocodeAddress, type GeocodeResult } from '../lib/geocode';
 
 const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY!;
@@ -174,6 +175,10 @@ export default function LocationPicker({ label, value, onChange }: Props) {
 
     if (!result) {
       setError('Could not find that address.');
+      // Query text itself isn't sent - it's often a home/work address,
+      // exactly the data this app is careful not to capture (see
+      // PROJECT.md's privacy flag). Length only, as a rough usage signal.
+      trackError('LocationPicker.handleSearch', 'geocode_not_found', { queryLength: query.trim().length });
       return;
     }
 

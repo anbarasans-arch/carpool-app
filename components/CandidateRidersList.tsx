@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { trackEvent } from '../lib/analytics';
+import { trackError, trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 
 const METERS_PER_MILE = 1609.344;
@@ -44,6 +44,7 @@ export default function CandidateRidersList({ tripId }: Props) {
 
     if (rpcError) {
       setError(rpcError.message);
+      trackError('CandidateRidersList.load', rpcError.message, { tripId });
       return;
     }
     setCandidates(data ?? []);
@@ -58,6 +59,7 @@ export default function CandidateRidersList({ tripId }: Props) {
       .single();
     if (matchError) {
       setError(matchError.message);
+      trackError('CandidateRidersList.handleInviteRider', matchError.message, { tripId, rideRequestId });
       return;
     }
     setInvitedCosts((prev) => ({ ...prev, [rideRequestId]: inserted?.suggested_cost_split ?? 0 }));

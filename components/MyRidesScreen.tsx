@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 
 import CandidateRidersList from './CandidateRidersList';
 import CandidateTripsList from './CandidateTripsList';
+import { trackError } from '../lib/analytics';
 import { groupByDate } from '../lib/dateGroups';
 import { supabase } from '../lib/supabase';
 
@@ -69,10 +70,12 @@ export default function MyRidesScreen() {
 
     if (tripsResult.error) {
       setError(tripsResult.error.message);
+      trackError('MyRidesScreen.load.trips', tripsResult.error.message);
       return;
     }
     if (requestsResult.error) {
       setError(requestsResult.error.message);
+      trackError('MyRidesScreen.load.rideRequests', requestsResult.error.message);
       return;
     }
 

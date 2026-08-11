@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { trackEvent } from '../lib/analytics';
+import { trackError, trackEvent } from '../lib/analytics';
 import { requestOtp, supabase } from '../lib/supabase';
 
 type Step = 'email' | 'code';
@@ -28,6 +28,11 @@ export default function SignInScreen() {
 
     if (error) {
       setError(error);
+      // Sign-in failures happen before identify() runs, so there's no
+      // other way to tell whose report this is if someone says "I
+      // couldn't get a code" - the email is the correlating key here,
+      // unlike the rest of this app's events which deliberately avoid it.
+      trackError('SignInScreen.handleRequestCode', error, { email: email.trim() });
       return;
     }
     setStep('code');
@@ -45,6 +50,7 @@ export default function SignInScreen() {
 
     if (error) {
       setError(error.message);
+      trackError('SignInScreen.handleVerifyCode', error.message, { email: email.trim() });
       return;
     }
     trackEvent('sign_in_completed');

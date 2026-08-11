@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text } from 'reac
 import CandidateTripsList from './CandidateTripsList';
 import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
-import { trackEvent } from '../lib/analytics';
+import { trackError, trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
@@ -62,7 +62,9 @@ export default function RequestRideScreen() {
     setSubmitting(false);
 
     if (insertError || !inserted) {
-      setError(insertError?.message ?? 'Could not save your request.');
+      const message = insertError?.message ?? 'Could not save your request.';
+      setError(message);
+      trackError('RequestRideScreen.handleSubmit', message);
       return;
     }
 

@@ -12,7 +12,7 @@ import {
 import CandidateRidersList from './CandidateRidersList';
 import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
-import { trackEvent } from '../lib/analytics';
+import { trackError, trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
@@ -70,7 +70,9 @@ export default function PostTripScreen() {
     setSubmitting(false);
 
     if (insertError || !inserted) {
-      setError(insertError?.message ?? 'Could not save your trip.');
+      const message = insertError?.message ?? 'Could not save your trip.';
+      setError(message);
+      trackError('PostTripScreen.handleSubmit', message, { seats: seatsNumber });
       return;
     }
 
