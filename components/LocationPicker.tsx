@@ -1,23 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import type { Region } from '../config/regions';
 import { trackError } from '../lib/analytics';
 import { autocompleteAddress, geocodeAddress, type GeocodeResult } from '../lib/geocode';
 
 const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY!;
 
-// Default map center only - purely a UX convenience for where the map opens
-// zoomed to. NOT the geofence origin point; the 50mi radius check (Phase 2,
-// see FOLLOWUPS.md) will need the office's real coordinates from the user.
-const DEFAULT_CENTER: [number, number] = [-96.797, 32.7767]; // downtown Dallas
-
 type Props = {
   label: string;
   value: GeocodeResult | null;
   onChange: (value: GeocodeResult) => void;
+  region: Region;
 };
 
-export default function LocationPicker({ label, value, onChange }: Props) {
+export default function LocationPicker({ label, value, onChange, region }: Props) {
+  // Default map center only - purely a UX convenience for where the map
+  // opens zoomed to. NOT the geofence origin point; that's enforced
+  // server-side against the selected region (see
+  // supabase/migrations/20260812010000_add_regions.sql).
+  const DEFAULT_CENTER: [number, number] = [region.officeLng, region.officeLat];
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function LocationPicker({ label, value, onChange }: Props) {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      autocompleteAddress(query.trim(), controller.signal)
+      autocompleteAddress(query.trim(), region, controller.signal)
         .then((results) => {
           if (!controller.signal.aborted) {
             setSuggestions(results);
@@ -129,6 +131,7 @@ export default function LocationPicker({ label, value, onChange }: Props) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       abortRef.current?.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   async function applyResult(result: GeocodeResult) {
@@ -170,7 +173,7 @@ export default function LocationPicker({ label, value, onChange }: Props) {
     setError(null);
     setShowSuggestions(false);
     setLoading(true);
-    const result = await geocodeAddress(query.trim());
+    const result = await geocodeAddress(query.trim(), region);
     setLoading(false);
 
     if (!result) {

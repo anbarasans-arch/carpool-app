@@ -1,30 +1,28 @@
+import type { Region } from '../config/regions';
+
 const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_KEY!;
 
-// Same office reference point as the DB geofence (see
-// supabase/migrations/20260731021429_geofence_validation.sql, widened to
-// 80mi in 20260803030000) - reused here so search results are scoped to
-// the same region trips are actually allowed in, rather than ranked
-// against the whole planet. Without this, a plain street address search
-// has returned a same-named road in Georgia, Alberta, London, and Madeira
-// ahead of the correct Dallas-area match - global text-similarity ranking
-// doesn't know "closest to where this app operates."
-const OFFICE_LAT = 32.9817475;
-const OFFICE_LNG = -97.1906054;
-const SEARCH_RADIUS_MILES = 80;
 const MILES_PER_DEGREE_LAT = 69;
 
-const latOffset = SEARCH_RADIUS_MILES / MILES_PER_DEGREE_LAT;
-const milesPerDegreeLng = MILES_PER_DEGREE_LAT * Math.cos((OFFICE_LAT * Math.PI) / 180);
-const lngOffset = SEARCH_RADIUS_MILES / milesPerDegreeLng;
-
 // Nominatim/LocationIQ viewbox order: left,top,right,bottom -
-// i.e. west,north,east,south.
-const VIEWBOX = [
-  OFFICE_LNG - lngOffset,
-  OFFICE_LAT + latOffset,
-  OFFICE_LNG + lngOffset,
-  OFFICE_LAT - latOffset,
-].join(',');
+// i.e. west,north,east,south. Scoped to the given region's office so
+// address search is ranked against where that city's trips are actually
+// allowed (see supabase/migrations/20260812010000_add_regions.sql), rather
+// than the whole planet - without this, a plain street address search has
+// returned a same-named road in a different state or country ahead of the
+// correct local match.
+function viewboxForRegion(region: Region): string {
+  const latOffset = region.radiusMiles / MILES_PER_DEGREE_LAT;
+  const milesPerDegreeLng = MILES_PER_DEGREE_LAT * Math.cos((region.officeLat * Math.PI) / 180);
+  const lngOffset = region.radiusMiles / milesPerDegreeLng;
+
+  return [
+    region.officeLng - lngOffset,
+    region.officeLat + latOffset,
+    region.officeLng + lngOffset,
+    region.officeLat - latOffset,
+  ].join(',');
+}
 
 export type GeocodeResult = {
   lat: number;
@@ -36,16 +34,19 @@ export type GeocodeResult = {
 // LocationIQ's /search (forward geocoding), not its dedicated
 // /autocomplete endpoint - confirmed via LocationIQ's own docs and by
 // testing directly that /autocomplete does not support viewbox/bounded at
-// all (only countrycodes), while /search respects them correctly. Without
-// bounded=1, autocomplete kept the Georgia/Canada/UK results ranked above
-// the right one even with a viewbox hint; /search enforces it properly.
-async function search(query: string, limit: number, signal?: AbortSignal): Promise<GeocodeResult[]> {
+// all (only countrycodes), while /search respects them correctly.
+async function search(
+  query: string,
+  limit: number,
+  region: Region,
+  signal?: AbortSignal,
+): Promise<GeocodeResult[]> {
   const url = new URL('https://us1.locationiq.com/v1/search');
   url.searchParams.set('key', LOCATIONIQ_KEY);
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'json');
   url.searchParams.set('limit', String(limit));
-  url.searchParams.set('viewbox', VIEWBOX);
+  url.searchParams.set('viewbox', viewboxForRegion(region));
   url.searchParams.set('bounded', '1');
   url.searchParams.set('countrycodes', 'us');
 
@@ -66,14 +67,15 @@ async function search(query: string, limit: number, signal?: AbortSignal): Promi
   }));
 }
 
-export async function geocodeAddress(query: string): Promise<GeocodeResult | null> {
-  const [result] = await search(query, 1);
+export async function geocodeAddress(query: string, region: Region): Promise<GeocodeResult | null> {
+  const [result] = await search(query, 1, region);
   return result ?? null;
 }
 
 export async function autocompleteAddress(
   query: string,
+  region: Region,
   signal?: AbortSignal,
 ): Promise<GeocodeResult[]> {
-  return search(query, 5, signal);
+  return search(query, 5, region, signal);
 }

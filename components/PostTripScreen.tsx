@@ -10,34 +10,46 @@ import {
 } from 'react-native';
 
 import CandidateRidersList from './CandidateRidersList';
-import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
+import MultiDatePicker from './MultiDatePicker';
+import TimeField from './TimeField';
+import type { Region } from '../config/regions';
 import { trackError, trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
-export default function PostTripScreen() {
+type Props = {
+  region: Region;
+};
+
+export default function PostTripScreen({ region }: Props) {
   const [origin, setOrigin] = useState<GeocodeResult | null>(null);
   const [destination, setDestination] = useState<GeocodeResult | null>(null);
   const [seats, setSeats] = useState('1');
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [postedCount, setPostedCount] = useState<number | null>(null);
   const [postedTripId, setPostedTripId] = useState<string | null>(null);
-  const departureRef = useRef<any>(null);
+  const departureTimeRef = useRef<any>(null);
 
   async function handleSubmit() {
     setError(null);
+    setPostedCount(null);
 
-    const departureValue: string = departureRef.current?.value ?? '';
+    const departureTimeValue: string = departureTimeRef.current?.value ?? '';
     const seatsNumber = parseInt(seats, 10);
 
     if (!origin || !destination) {
       setError('Pick both an origin and a destination.');
       return;
     }
-    if (!departureValue) {
-      setError('Pick a departure date and time.');
+    if (selectedDates.length === 0) {
+      setError('Pick at least one date you plan to drive.');
+      return;
+    }
+    if (!departureTimeValue) {
+      setError('Pick a departure time.');
       return;
     }
     if (!Number.isInteger(seatsNumber) || seatsNumber < 1) {
@@ -53,46 +65,54 @@ export default function PostTripScreen() {
       return;
     }
 
+    // One row per selected date, same route/time/seats - lets a driver who
+    // carpools on a recurring but non-daily pattern (e.g. alternating weeks)
+    // post the whole set in one go instead of repeating the form per day.
+    const rows = selectedDates.map((dateKey) => ({
+      driver_id: user.id,
+      region_id: region.id,
+      origin_point: `SRID=4326;POINT(${origin.lng} ${origin.lat})`,
+      destination_point: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
+      origin_label: origin.label,
+      destination_label: destination.label,
+      departure_time: new Date(`${dateKey}T${departureTimeValue}`).toISOString(),
+      seats_available: seatsNumber,
+    }));
+
     setSubmitting(true);
-    const { data: inserted, error: insertError } = await supabase
-      .from('trips')
-      .insert({
-        driver_id: user.id,
-        origin_point: `SRID=4326;POINT(${origin.lng} ${origin.lat})`,
-        destination_point: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
-        origin_label: origin.label,
-        destination_label: destination.label,
-        departure_time: new Date(departureValue).toISOString(),
-        seats_available: seatsNumber,
-      })
-      .select('id')
-      .single();
+    const { data: inserted, error: insertError } = await supabase.from('trips').insert(rows).select('id');
     setSubmitting(false);
 
     if (insertError || !inserted) {
       const message = insertError?.message ?? 'Could not save your trip.';
       setError(message);
-      trackError('PostTripScreen.handleSubmit', message, { seats: seatsNumber });
+      trackError('PostTripScreen.handleSubmit', message, { seats: seatsNumber, dateCount: rows.length });
       return;
     }
 
-    trackEvent('trip_posted', { seats: seatsNumber });
-    setSuccess(true);
-    setPostedTripId(inserted.id);
+    trackEvent('trip_posted', { seats: seatsNumber, dateCount: inserted.length });
+    setPostedCount(inserted.length);
+    setPostedTripId(inserted.length === 1 ? inserted[0].id : null);
     setOrigin(null);
     setDestination(null);
     setSeats('1');
-    if (departureRef.current) departureRef.current.value = '';
+    setSelectedDates([]);
+    if (departureTimeRef.current) departureTimeRef.current.value = '';
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Post a trip</Text>
 
-      <LocationPicker label="Origin" value={origin} onChange={setOrigin} />
-      <LocationPicker label="Destination" value={destination} onChange={setDestination} />
+      <LocationPicker label="Origin" value={origin} onChange={setOrigin} region={region} />
+      <LocationPicker label="Destination" value={destination} onChange={setDestination} region={region} />
 
-      <DateTimeField ref={departureRef} label="Departure date & time" />
+      <TimeField ref={departureTimeRef} label="Departure time" />
+      <MultiDatePicker
+        label="Which days are you driving?"
+        selectedDates={selectedDates}
+        onChange={setSelectedDates}
+      />
 
       <View style={styles.field}>
         <Text style={styles.label}>Seats available</Text>
@@ -105,10 +125,20 @@ export default function PostTripScreen() {
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {success ? <Text style={styles.success}>Trip posted!</Text> : null}
+      {postedCount ? (
+        <Text style={styles.success}>
+          {postedCount === 1 ? 'Trip posted!' : `${postedCount} trips posted!`}
+        </Text>
+      ) : null}
 
       <Pressable style={styles.button} onPress={handleSubmit} disabled={submitting}>
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Post trip</Text>}
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>
+            Post trip{selectedDates.length > 1 ? `s (${selectedDates.length})` : ''}
+          </Text>
+        )}
       </Pressable>
 
       {postedTripId ? <CandidateRidersList tripId={postedTripId} /> : null}

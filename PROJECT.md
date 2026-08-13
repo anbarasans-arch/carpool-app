@@ -12,7 +12,9 @@ https://lets-carpool.com. MVP is pilot-demo-ready. Phase 3 only if the company a
 ## 1. What this is
 
 An internal carpooling app for employees of one company, matching drivers and riders
-for commutes to/from a single office (Dallas). Not a public product. Not a commercial
+for commutes to/from a company office. Supports multiple cities (each with its own office
+location and geofence radius, configured in `config/regions.ts` - see section 5); a user
+picks their city once and everything scopes to it. Not a public product. Not a commercial
 ride-hailing business — closer to a company-sponsored rideshare board than an Uber clone.
 
 ## 2. Hard requirements
@@ -22,12 +24,16 @@ ride-hailing business — closer to a company-sponsored rideshare board than an 
   email domain may request a code at all** (the actual domain is a Supabase secret,
   `ALLOWED_EMAIL_DOMAIN` - not committed to this repo) — reject before sending, don't
   just reject after.
-- **Geofence:** all trips must have origin and destination within **80 miles** (widened
-  2026-08-03 from an original 50mi) of the company's office coordinates. Reject trip
-  creation outside this radius.
-- **Scale target:** up to **20,000 users total** (drivers + riders combined), single
-  metro area. This is a small scale for the stack below — no need for heavy geo-indexing
-  (H3, Redis) at this size; plain PostGIS queries are fine indefinitely.
+- **Geofence:** all trips must have origin and destination within that city's configured
+  radius (80mi for the original Dallas–Fort Worth region, widened 2026-08-03 from an
+  original 50mi) of that city's office coordinates. Reject trip creation outside this
+  radius. Enforced server-side per-region (`regions` table + `enforce_trip_geofence`
+  trigger) - see section 5.
+- **Scale target:** up to **20,000 users total** (drivers + riders combined) across all
+  configured cities. This is a small scale for the stack below — no need for heavy
+  geo-indexing (H3, Redis) at this size; plain PostGIS queries are fine indefinitely.
+  Matching is always scoped to a single region (see section 5), so per-city query cost
+  doesn't grow with the number of cities added.
 - **Matching model:** request-now / same-day matching, not live GPS tracking during
   the ride. Driver and rider see each other's contact info once matched and coordinate
   the actual pickup themselves (like a text message would).
@@ -51,7 +57,10 @@ Do not build these yet, even if they seem natural to add:
 - Native iOS/Android apps (see stack — start as a web app)
 - Driver background checks / ID verification (closed employee population; revisit if
   the company formally adopts this)
-- Recurring/scheduled trip templates (nice-to-have, Phase 2)
+- A true recurring-trip *template* engine (define a pattern once, auto-generates future
+  trips forever via a background job) - the bulk multi-date picker (Phase 2.5, section 6)
+  covers the actual need (alternating/non-daily carpool patterns) without one; revisit
+  only if manually re-posting every few weeks becomes real friction
 - Admin dashboard / analytics (Phase 2)
 - Rating/review system (Phase 2, low priority given closed trusted population)
 
@@ -85,21 +94,43 @@ or duplicating the app in a second framework once iOS/Android get added.
 ## 5. Data model (starting point — will evolve)
 
 ```
+regions  (the list of supported cities - config/regions.ts is the
+          human-editable source; this table is what's actually enforced,
+          since the geofence check has to hold server-side)
+  id, name, office_point (geography), radius_miles, active, created_at
+
 users
-  id, email, verified_at, created_at
+  id, email, verified_at, home_region_id, created_at
 
 trips  (a driver posting "I'm driving this route")
-  id, driver_id, origin_point (geography), destination_point (geography),
+  id, driver_id, region_id, origin_point (geography), destination_point (geography),
   departure_time, seats_available, status, created_at
 
 ride_requests  (a rider looking for a match)
-  id, rider_id, origin_point, destination_point, desired_time_window,
+  id, rider_id, region_id, origin_point, destination_point, desired_time_window,
   status, created_at
 
 matches
   id, trip_id, ride_request_id, status (pending/confirmed/declined),
   suggested_cost_split, created_at
 ```
+
+**Multi-city:** `config/regions.ts` is the human-editable list of supported cities (id,
+name, office lat/lng, radius). Adding a city means adding an entry there plus a small
+migration to insert/update the matching row in `regions` (ask Claude Code to do this -
+the DB copy is what the geofence trigger and matching queries actually check against).
+Every trip/ride_request carries a `region_id`; matching and notifications only ever pair
+rows within the same region, so cities never cross-match. A user's `home_region_id` is
+picked once (a city-picker screen shown before sign-in when none is set yet) and reused
+as the default everywhere; there's no per-trip city override in the MVP.
+
+**Recurring/alternating-day trips:** no separate "recurring trip" concept in the schema -
+a driver/rider picks specific calendar dates (a lightweight custom `MultiDatePicker`,
+not day-of-week + interval rules) when posting, and one concrete `trips`/`ride_requests`
+row is inserted per selected date, all sharing the same route/time-of-day. This handles
+any pattern (including alternating weeks) without a recurrence engine or generation job -
+every existing matching/confirmation/expiry/notification path already operates on
+concrete rows and needed no changes.
 
 ## 6. Phased build plan (sized for a few hours/week)
 
@@ -153,6 +184,19 @@ matches
       migration (not repeated here). `enforce_trip_geofence_trigger` rejects trip insert/update when origin or
       destination is outside 50mi, scoped to `trips` only (see FOLLOWUPS.md re:
       ride_requests). Verified end-to-end including through the real UI.
+
+**Phase 2.5 — Multi-city + flexible scheduling - DONE (2026-08-12)**
+- [x] Multi-city support: `regions` table + `config/regions.ts`, city picker screen
+      before sign-in, `home_region_id` on users (set via the `set_home_region` RPC -
+      the general self-update policy stays dropped per the 2026-08-03 security fix),
+      geofence trigger and all matching/notification functions made region-aware.
+      Seeded with the original Dallas–Fort Worth region only; no behavior change for
+      existing users. Verified end-to-end against the real DB.
+- [x] Bulk multi-date posting: `MultiDatePicker` component lets a driver/rider tap every
+      specific date they carpool (handles alternating-week patterns without a recurrence
+      engine), `TimeField` replaces the old single datetime input. One `trips`/
+      `ride_requests` row inserted per selected date. Verified end-to-end against the
+      real DB.
 
 **Phase 3 — Only if the company adopts it**
 - Migrate to company cloud infra

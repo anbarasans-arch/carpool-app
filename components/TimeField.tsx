@@ -5,21 +5,20 @@ type Props = {
   label: string;
 };
 
-const DateTimeField = forwardRef<any, Props>(function DateTimeField({ label }, ref) {
+const TimeField = forwardRef<any, Props>(function TimeField({ label }, ref) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       {Platform.OS === 'web' ? (
-        // @ts-expect-error - raw DOM element, web only
-        <input ref={ref} type="datetime-local" style={webInputStyle} />
+        <input ref={ref} type="time" style={webInputStyle} />
       ) : (
-        <Text style={styles.nativeFallback}>Date/time picker is available on web for now.</Text>
+        <Text style={styles.nativeFallback}>Time picker is available on web for now.</Text>
       )}
     </View>
   );
 });
 
-export default DateTimeField;
+export default TimeField;
 
 const webInputStyle: any = {
   width: '100%',

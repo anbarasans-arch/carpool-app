@@ -2,24 +2,32 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
 import CandidateTripsList from './CandidateTripsList';
-import DateTimeField from './DateTimeField';
 import LocationPicker from './LocationPicker';
+import MultiDatePicker from './MultiDatePicker';
+import TimeField from './TimeField';
+import type { Region } from '../config/regions';
 import { trackError, trackEvent } from '../lib/analytics';
 import { supabase } from '../lib/supabase';
 import type { GeocodeResult } from '../lib/geocode';
 
-export default function RequestRideScreen() {
+type Props = {
+  region: Region;
+};
+
+export default function RequestRideScreen({ region }: Props) {
   const [origin, setOrigin] = useState<GeocodeResult | null>(null);
   const [destination, setDestination] = useState<GeocodeResult | null>(null);
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [postedCount, setPostedCount] = useState<number | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const windowStartRef = useRef<any>(null);
   const windowEndRef = useRef<any>(null);
 
   async function handleSubmit() {
     setError(null);
+    setPostedCount(null);
 
     const windowStartValue: string = windowStartRef.current?.value ?? '';
     const windowEndValue: string = windowEndRef.current?.value ?? '';
@@ -28,11 +36,15 @@ export default function RequestRideScreen() {
       setError('Pick both an origin and a destination.');
       return;
     }
+    if (selectedDates.length === 0) {
+      setError('Pick at least one date you need a ride.');
+      return;
+    }
     if (!windowStartValue || !windowEndValue) {
       setError('Pick your earliest and latest departure time.');
       return;
     }
-    if (new Date(windowEndValue) <= new Date(windowStartValue)) {
+    if (windowEndValue <= windowStartValue) {
       setError('Latest departure must be after earliest departure.');
       return;
     }
@@ -45,34 +57,40 @@ export default function RequestRideScreen() {
       return;
     }
 
+    // One row per selected date, same route/window - lets a rider who needs
+    // a ride on a recurring but non-daily pattern (e.g. alternating weeks)
+    // submit the whole set in one go instead of repeating the form per day.
+    const rows = selectedDates.map((dateKey) => ({
+      rider_id: user.id,
+      region_id: region.id,
+      origin_point: `SRID=4326;POINT(${origin.lng} ${origin.lat})`,
+      destination_point: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
+      origin_label: origin.label,
+      destination_label: destination.label,
+      desired_time_start: new Date(`${dateKey}T${windowStartValue}`).toISOString(),
+      desired_time_end: new Date(`${dateKey}T${windowEndValue}`).toISOString(),
+    }));
+
     setSubmitting(true);
     const { data: inserted, error: insertError } = await supabase
       .from('ride_requests')
-      .insert({
-        rider_id: user.id,
-        origin_point: `SRID=4326;POINT(${origin.lng} ${origin.lat})`,
-        destination_point: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
-        origin_label: origin.label,
-        destination_label: destination.label,
-        desired_time_start: new Date(windowStartValue).toISOString(),
-        desired_time_end: new Date(windowEndValue).toISOString(),
-      })
-      .select('id')
-      .single();
+      .insert(rows)
+      .select('id');
     setSubmitting(false);
 
     if (insertError || !inserted) {
       const message = insertError?.message ?? 'Could not save your request.';
       setError(message);
-      trackError('RequestRideScreen.handleSubmit', message);
+      trackError('RequestRideScreen.handleSubmit', message, { dateCount: rows.length });
       return;
     }
 
-    trackEvent('ride_requested');
-    setSuccess(true);
-    setRequestId(inserted.id);
+    trackEvent('ride_requested', { dateCount: inserted.length });
+    setPostedCount(inserted.length);
+    setRequestId(inserted.length === 1 ? inserted[0].id : null);
     setOrigin(null);
     setDestination(null);
+    setSelectedDates([]);
     if (windowStartRef.current) windowStartRef.current.value = '';
     if (windowEndRef.current) windowEndRef.current.value = '';
   }
@@ -81,17 +99,32 @@ export default function RequestRideScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Request a ride</Text>
 
-      <LocationPicker label="Origin" value={origin} onChange={setOrigin} />
-      <LocationPicker label="Destination" value={destination} onChange={setDestination} />
+      <LocationPicker label="Origin" value={origin} onChange={setOrigin} region={region} />
+      <LocationPicker label="Destination" value={destination} onChange={setDestination} region={region} />
 
-      <DateTimeField ref={windowStartRef} label="Earliest departure" />
-      <DateTimeField ref={windowEndRef} label="Latest departure" />
+      <TimeField ref={windowStartRef} label="Earliest departure" />
+      <TimeField ref={windowEndRef} label="Latest departure" />
+      <MultiDatePicker
+        label="Which days do you need a ride?"
+        selectedDates={selectedDates}
+        onChange={setSelectedDates}
+      />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {success ? <Text style={styles.success}>Ride requested!</Text> : null}
+      {postedCount ? (
+        <Text style={styles.success}>
+          {postedCount === 1 ? 'Ride requested!' : `${postedCount} ride requests posted!`}
+        </Text>
+      ) : null}
 
       <Pressable style={styles.button} onPress={handleSubmit} disabled={submitting}>
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Request ride</Text>}
+        {submitting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>
+            Request ride{selectedDates.length > 1 ? `s (${selectedDates.length})` : ''}
+          </Text>
+        )}
       </Pressable>
 
       {requestId ? <CandidateTripsList requestId={requestId} /> : null}
