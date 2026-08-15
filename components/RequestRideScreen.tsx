@@ -22,12 +22,14 @@ export default function RequestRideScreen({ region }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [postedCount, setPostedCount] = useState<number | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const windowStartRef = useRef<any>(null);
   const windowEndRef = useRef<any>(null);
 
   async function handleSubmit() {
     setError(null);
     setPostedCount(null);
+    setCandidateCount(null);
 
     const windowStartValue: string = windowStartRef.current?.value ?? '';
     const windowEndValue: string = windowEndRef.current?.value ?? '';
@@ -93,6 +95,22 @@ export default function RequestRideScreen({ region }: Props) {
     setSelectedDates([]);
     if (windowStartRef.current) windowStartRef.current.value = '';
     if (windowEndRef.current) windowEndRef.current.value = '';
+
+    // A single-date request already shows CandidateTripsList inline below.
+    // For a bulk request there's no single row to show candidates for, so
+    // surface a count instead - otherwise a rider who just requested several
+    // dates has no way to know any of them already have a matching trip
+    // short of opening each one individually in My rides.
+    if (inserted.length > 1) {
+      const { data: count, error: countError } = await supabase.rpc('count_requests_with_candidates', {
+        request_ids: inserted.map((row) => row.id),
+      });
+      if (countError) {
+        trackError('RequestRideScreen.countCandidates', countError.message);
+      } else {
+        setCandidateCount(count ?? 0);
+      }
+    }
   }
 
   return (
@@ -114,6 +132,13 @@ export default function RequestRideScreen({ region }: Props) {
       {postedCount ? (
         <Text style={styles.success}>
           {postedCount === 1 ? 'Ride requested!' : `${postedCount} ride requests posted!`}
+        </Text>
+      ) : null}
+      {candidateCount ? (
+        <Text style={styles.candidateBanner}>
+          {candidateCount} of your {postedCount} request{postedCount === 1 ? '' : 's'} already{' '}
+          {candidateCount === 1 ? 'has a' : 'have'} matching trip{candidateCount === 1 ? '' : 's'} - check My
+          rides to view and request them.
         </Text>
       ) : null}
 
@@ -149,6 +174,15 @@ const styles = StyleSheet.create({
   success: {
     color: '#0a0',
     fontSize: 14,
+  },
+  candidateBanner: {
+    color: '#111',
+    fontSize: 13,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 10,
+    maxWidth: 480,
+    width: '100%',
   },
   button: {
     backgroundColor: '#111',

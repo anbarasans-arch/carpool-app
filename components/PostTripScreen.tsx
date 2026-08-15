@@ -31,11 +31,13 @@ export default function PostTripScreen({ region }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [postedCount, setPostedCount] = useState<number | null>(null);
   const [postedTripId, setPostedTripId] = useState<string | null>(null);
+  const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const departureTimeRef = useRef<any>(null);
 
   async function handleSubmit() {
     setError(null);
     setPostedCount(null);
+    setCandidateCount(null);
 
     const departureTimeValue: string = departureTimeRef.current?.value ?? '';
     const seatsNumber = parseInt(seats, 10);
@@ -98,6 +100,22 @@ export default function PostTripScreen({ region }: Props) {
     setSeats('1');
     setSelectedDates([]);
     if (departureTimeRef.current) departureTimeRef.current.value = '';
+
+    // A single-date post already shows CandidateRidersList inline below.
+    // For a bulk post there's no single trip to show candidates for, so
+    // surface a count instead - otherwise a driver who just posted several
+    // trips has no way to know any of them already have riders nearby
+    // short of opening each one individually in My rides.
+    if (inserted.length > 1) {
+      const { data: count, error: countError } = await supabase.rpc('count_trips_with_candidates', {
+        trip_ids: inserted.map((row) => row.id),
+      });
+      if (countError) {
+        trackError('PostTripScreen.countCandidates', countError.message);
+      } else {
+        setCandidateCount(count ?? 0);
+      }
+    }
   }
 
   return (
@@ -128,6 +146,13 @@ export default function PostTripScreen({ region }: Props) {
       {postedCount ? (
         <Text style={styles.success}>
           {postedCount === 1 ? 'Trip posted!' : `${postedCount} trips posted!`}
+        </Text>
+      ) : null}
+      {candidateCount ? (
+        <Text style={styles.candidateBanner}>
+          {candidateCount} of your {postedCount} trip{postedCount === 1 ? '' : 's'} already{' '}
+          {candidateCount === 1 ? 'has a' : 'have'} rider{candidateCount === 1 ? '' : 's'} nearby - check My
+          rides to view and invite them.
         </Text>
       ) : null}
 
@@ -180,6 +205,15 @@ const styles = StyleSheet.create({
   success: {
     color: '#0a0',
     fontSize: 14,
+  },
+  candidateBanner: {
+    color: '#111',
+    fontSize: 13,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 10,
+    maxWidth: 480,
+    width: '100%',
   },
   button: {
     backgroundColor: '#111',
