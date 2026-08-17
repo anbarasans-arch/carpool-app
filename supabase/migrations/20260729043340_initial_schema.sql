@@ -2,12 +2,15 @@
 create extension if not exists postgis;
 
 -- Profile row per authenticated user, keyed to Supabase Auth's auth.users.
--- Email domain (@fmr.com) is enforced here as defense in depth; the primary
--- gate is the OTP-request Edge Function rejecting other domains before a
--- code is ever sent.
+-- A company work-email domain is enforced here as defense in depth (the
+-- specific domain is redacted from this historical migration at the
+-- company's request - see PROJECT.md); the primary gate is the OTP-request
+-- Edge Function rejecting other domains before a code is ever sent. This
+-- constraint was superseded by later migrations (20260802060000,
+-- 20260803020000) and is not what's currently enforced.
 create table public.users (
   id uuid primary key references auth.users (id) on delete cascade,
-  email text not null unique check (email like '%@fmr.com'),
+  email text not null unique check (email like '%@company-domain.example'),
   verified_at timestamptz,
   created_at timestamptz not null default now()
 );

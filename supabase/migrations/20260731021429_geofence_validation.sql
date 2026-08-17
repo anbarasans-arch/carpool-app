@@ -1,7 +1,7 @@
 -- Enforces PROJECT.md's hard requirement: "all trips must have origin and
 -- destination within 50 miles of the Dallas office coordinates. Reject
--- trip creation outside this radius." Office confirmed 2026-07-31: Fidelity's
--- Westlake corporate offices, 1 Destiny Way, Westlake, TX 76262
+-- trip creation outside this radius." Office confirmed 2026-07-31: the
+-- company's Westlake office, 1 Destiny Way, Westlake, TX 76262
 -- (32.9817475, -97.1906054) - see FOLLOWUPS.md.
 --
 -- A trigger rather than a CHECK constraint: ST_DWithin is STABLE, not
