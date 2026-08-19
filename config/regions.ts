@@ -19,6 +19,22 @@ export const REGIONS: Region[] = [
     officeLng: -97.1906054,
     radiusMiles: 80,
   },
+  {
+    id: 'durham',
+    name: 'Durham, NC',
+    // Anchored on Research Triangle Park (zip 27709 is a non-geographic
+    // corporate mailing zip with no real coordinates of its own).
+    officeLat: 35.8923773,
+    officeLng: -78.8658899,
+    radiusMiles: 80,
+  },
+  {
+    id: 'merrimack',
+    name: 'Merrimack, NH',
+    officeLat: 42.8524398,
+    officeLng: -71.5078474,
+    radiusMiles: 80,
+  },
 ];
 
 export const DEFAULT_REGION_ID = REGIONS[0].id;

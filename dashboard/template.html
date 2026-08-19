@@ -135,6 +135,54 @@
 
   .as-of strong { color: var(--text); font-weight: 600; }
 
+  /* ---------- filter bar ---------- */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .filter-bar label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+  }
+
+  #region-select {
+    font-family: "IBM Plex Sans", inherit;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+  }
+
+  /* ---------- empty state ---------- */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+  }
+
+  .empty-state-title {
+    font-family: "Sora", sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0 0 6px;
+  }
+
+  .empty-state-body {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
   /* ---------- kpi row ---------- */
   .kpi-row {
     display: grid;
@@ -342,48 +390,60 @@
     <div class="as-of" id="as-of"></div>
   </header>
 
-  <section class="kpi-row" id="kpi-row"></section>
+  <div class="filter-bar">
+    <label for="region-select">Viewing</label>
+    <select id="region-select"></select>
+  </div>
 
-  <section>
-    <div class="section-head">
-      <h2>Daily activity — last 30 days</h2>
-      <span class="section-note">real users only, builder test accounts excluded</span>
-    </div>
-    <div class="panel">
-      <div class="trend-row" id="trend-row"></div>
-    </div>
-  </section>
+  <div id="empty-state" class="panel empty-state" style="display:none;">
+    <p class="empty-state-title">No signups yet in <span data-empty-city></span></p>
+    <p class="empty-state-body">This city was just added — numbers will show up here once people start signing up.</p>
+  </div>
 
-  <section>
-    <div class="section-head">
-      <h2>Monthly totals</h2>
-      <span class="section-note">since launch — 2 months of history so far</span>
-    </div>
-    <div class="panel">
-      <div class="monthly-wrap">
-        <div class="monthly-chart"><svg id="monthly-svg" class="trend-svg" style="height:170px" viewBox="0 0 560 170" preserveAspectRatio="none"></svg></div>
-        <div class="monthly-legend" id="monthly-legend"></div>
-      </div>
-    </div>
-  </section>
+  <div id="main-content">
+    <section class="kpi-row" id="kpi-row"></section>
 
-  <section>
-    <div class="two-col">
-      <div class="panel">
-        <div class="section-head" style="margin-bottom:14px;">
-          <h2>Signups by email domain</h2>
-        </div>
-        <div id="domain-list"></div>
+    <section>
+      <div class="section-head">
+        <h2>Daily activity — last 30 days</h2>
+        <span class="section-note">real users only, builder test accounts excluded</span>
       </div>
       <div class="panel">
-        <div class="section-head" style="margin-bottom:14px;">
-          <h2>Match funnel</h2>
-        </div>
-        <div class="funnel-stack" id="funnel-stack"></div>
-        <div class="funnel-foot" id="funnel-foot"></div>
+        <div class="trend-row" id="trend-row"></div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Monthly totals</h2>
+        <span class="section-note">since launch</span>
+      </div>
+      <div class="panel">
+        <div class="monthly-wrap">
+          <div class="monthly-chart"><svg id="monthly-svg" class="trend-svg" style="height:170px" viewBox="0 0 560 170" preserveAspectRatio="none"></svg></div>
+          <div class="monthly-legend" id="monthly-legend"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="two-col">
+        <div class="panel">
+          <div class="section-head" style="margin-bottom:14px;">
+            <h2>Signups by email domain</h2>
+          </div>
+          <div id="domain-list"></div>
+        </div>
+        <div class="panel">
+          <div class="section-head" style="margin-bottom:14px;">
+            <h2>Match funnel</h2>
+          </div>
+          <div class="funnel-stack" id="funnel-stack"></div>
+          <div class="funnel-foot" id="funnel-foot"></div>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <footer>
     <span><strong>$0 cost</strong> — queried live from the production database, rendered as a static file. No BI subscription.</span>
@@ -394,67 +454,17 @@
 <div id="tooltip"></div>
 
 <script>
-  const DAILY = [
-    {d:"07-17",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-18",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-19",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-20",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-21",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-22",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-23",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-24",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-25",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-26",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-27",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-28",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-29",signups:0,trips:0,requests:0,matches:0},
-    {d:"07-30",signups:1,trips:0,requests:0,matches:0},
-    {d:"07-31",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-01",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-02",signups:0,trips:0,requests:0,matches:2},
-    {d:"08-03",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-04",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-05",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-06",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-07",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-08",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-09",signups:0,trips:0,requests:0,matches:0},
-    {d:"08-10",signups:14,trips:4,requests:4,matches:0},
-    {d:"08-11",signups:27,trips:3,requests:4,matches:0},
-    {d:"08-12",signups:3,trips:0,requests:1,matches:0},
-    {d:"08-13",signups:7,trips:1,requests:102,matches:0},
-    {d:"08-14",signups:2,trips:0,requests:3,matches:0},
-    {d:"08-15",signups:0,trips:0,requests:0,matches:0},
-  ];
+  const REGIONS = [{"id": "dfw", "name": "Dallas–Fort Worth"}, {"id": "durham", "name": "Durham, NC"}, {"id": "merrimack", "name": "Merrimack, NH"}];
 
-  const MONTHLY = [
-    {m:"Jul 2026", signups:1, trips:0, requests:0, matches:0},
-    {m:"Aug 2026", signups:53, trips:8, requests:114, matches:2},
-  ];
+  const DAILY = [{"region_id": "dfw", "d": "07-21", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-22", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-23", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-24", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-25", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-26", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-27", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-28", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-29", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-30", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "07-31", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-01", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-02", "signups": 0, "trips": 0, "requests": 0, "matches": 2}, {"region_id": "dfw", "d": "08-03", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-04", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-05", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-06", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-07", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-08", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-09", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-10", "signups": 14, "trips": 4, "requests": 4, "matches": 0}, {"region_id": "dfw", "d": "08-11", "signups": 27, "trips": 3, "requests": 4, "matches": 0}, {"region_id": "dfw", "d": "08-12", "signups": 3, "trips": 0, "requests": 1, "matches": 0}, {"region_id": "dfw", "d": "08-13", "signups": 7, "trips": 1, "requests": 102, "matches": 0}, {"region_id": "dfw", "d": "08-14", "signups": 2, "trips": 0, "requests": 3, "matches": 0}, {"region_id": "dfw", "d": "08-15", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-16", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "d": "08-17", "signups": 9, "trips": 31, "requests": 13, "matches": 0}, {"region_id": "dfw", "d": "08-18", "signups": 5, "trips": 0, "requests": 3, "matches": 0}, {"region_id": "dfw", "d": "08-19", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-21", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-22", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-23", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-24", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-25", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-26", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-27", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-28", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-29", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-30", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "07-31", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-01", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-02", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-03", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-04", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-05", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-06", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-07", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-08", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-09", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-10", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-11", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-12", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-13", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-14", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-15", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-16", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-17", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-18", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "d": "08-19", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-21", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-22", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-23", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-24", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-25", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-26", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-27", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-28", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-29", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-30", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "07-31", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-01", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-02", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-03", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-04", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-05", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-06", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-07", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-08", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-09", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-10", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-11", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-12", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-13", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-14", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-15", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-16", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-17", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-18", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "d": "08-19", "signups": 0, "trips": 0, "requests": 0, "matches": 0}];
 
-  const DOMAINS = [
-    {domain:"gmail.com", count:46},
-    {domain:"yahoo.com", count:3},
-    {domain:"live.com", count:1},
-    {domain:"northeastern.edu", count:1},
-    {domain:"outlook.com", count:1},
-    {domain:"aol.com", count:1},
-    {domain:"hotmail.com", count:1},
-  ];
+  const MONTHLY = [{"region_id": "dfw", "m": "Jul 2026", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "dfw", "m": "Aug 2026", "signups": 67, "trips": 39, "requests": 130, "matches": 2}, {"region_id": "durham", "m": "Jul 2026", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "durham", "m": "Aug 2026", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "m": "Jul 2026", "signups": 0, "trips": 0, "requests": 0, "matches": 0}, {"region_id": "merrimack", "m": "Aug 2026", "signups": 0, "trips": 0, "requests": 0, "matches": 0}];
 
-  const KPI = {
-    real_signups: 54,
-    signups_7d: 53,
-    total_trips: 8,
-    trips_active_upcoming: 1,
-    total_requests: 114,
-    requests_active_upcoming: 105,
-    matches_pending: 2,
-    matches_confirmed: 0,
-    matches_declined: 0,
-    activated: 20,
-  };
+  const DOMAINS = [{"count": 57, "domain": "gmail.com", "region_id": "dfw"}, {"count": 3, "domain": "yahoo.com", "region_id": "dfw"}, {"count": 1, "domain": "outlook.com", "region_id": "dfw"}, {"count": 1, "domain": "hotmail.com", "region_id": "dfw"}, {"count": 1, "domain": "northeastern.edu", "region_id": "dfw"}, {"count": 1, "domain": "aol.com", "region_id": "dfw"}, {"count": 1, "domain": "yahoo.in", "region_id": "dfw"}, {"count": 1, "domain": "icloud.com", "region_id": "dfw"}, {"count": 1, "domain": "live.com", "region_id": "dfw"}];
 
+  const KPI = [{"activated": 28, "region_id": "dfw", "signups_7d": 26, "total_trips": 39, "real_signups": 67, "total_requests": 130, "matches_pending": 2, "matches_declined": 0, "matches_confirmed": 0, "trips_active_upcoming": 27, "requests_active_upcoming": 109}, {"activated": 0, "region_id": "durham", "signups_7d": 0, "total_trips": 0, "real_signups": 0, "total_requests": 0, "matches_pending": 0, "matches_declined": 0, "matches_confirmed": 0, "trips_active_upcoming": 0, "requests_active_upcoming": 0}, {"activated": 0, "region_id": "merrimack", "signups_7d": 0, "total_trips": 0, "real_signups": 0, "total_requests": 0, "matches_pending": 0, "matches_declined": 0, "matches_confirmed": 0, "trips_active_upcoming": 0, "requests_active_upcoming": 0}];
+
+  const ALL_ID = "__all__";
   const NS = "http://www.w3.org/2000/svg";
   const tooltip = document.getElementById("tooltip");
 
@@ -470,32 +480,55 @@
     return n.toLocaleString("en-US");
   }
 
-  /* ---------------- KPI row ---------------- */
-  const activationPct = Math.round((KPI.activated / KPI.real_signups) * 100);
-  const kpis = [
-    { label: "Real signups", value: fmt(KPI.real_signups), sub: `+${KPI.signups_7d} last 7 days` },
-    { label: "Trips posted", value: fmt(KPI.total_trips), sub: `${KPI.trips_active_upcoming} active upcoming` },
-    { label: "Ride requests", value: fmt(KPI.total_requests), sub: `${KPI.requests_active_upcoming} active upcoming` },
-    { label: "Activation", value: activationPct + "%", sub: `${KPI.activated} of ${KPI.real_signups} took an action` },
-    { label: "Matches pending", value: fmt(KPI.matches_pending), sub: "awaiting confirm/decline", chip: {cls:"warn", text:"needs attention"} },
-    { label: "Matches confirmed", value: fmt(KPI.matches_confirmed), sub: "since launch", chip: {cls:"warn", text:"0 so far"} },
-  ];
+  /* ---------------- per-region filtering / aggregation ---------------- */
+  const KPI_KEYS = ["real_signups", "signups_7d", "total_trips", "trips_active_upcoming",
+    "total_requests", "requests_active_upcoming", "matches_pending", "matches_confirmed",
+    "matches_declined", "activated"];
 
-  const kpiRow = document.getElementById("kpi-row");
-  kpis.forEach(k => {
-    const card = document.createElement("div");
-    card.className = "kpi-card";
-    card.innerHTML = `
-      <div class="kpi-label">${k.label}</div>
-      <div class="kpi-value num">${k.value}</div>
-      <div class="kpi-sub">${k.sub}</div>
-      ${k.chip ? `<div class="chip ${k.chip.cls}">${k.chip.text}</div>` : ""}
-    `;
-    kpiRow.appendChild(card);
-  });
+  function sumKeys(rows, keys) {
+    const base = {};
+    keys.forEach(k => base[k] = 0);
+    rows.forEach(r => keys.forEach(k => base[k] += r[k]));
+    return base;
+  }
 
-  document.getElementById("as-of").innerHTML =
-    `Snapshot as of <strong>Aug 15, 2026</strong><br>Builder's own test accounts excluded throughout`;
+  function getDaily(regionId) {
+    if (regionId === ALL_ID) {
+      const byDate = new Map();
+      DAILY.forEach(r => {
+        const cur = byDate.get(r.d) || { d: r.d, signups: 0, trips: 0, requests: 0, matches: 0 };
+        cur.signups += r.signups; cur.trips += r.trips; cur.requests += r.requests; cur.matches += r.matches;
+        byDate.set(r.d, cur);
+      });
+      return [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d));
+    }
+    return DAILY.filter(r => r.region_id === regionId);
+  }
+
+  function getMonthly(regionId) {
+    if (regionId === ALL_ID) {
+      const byMonth = new Map();
+      MONTHLY.forEach(r => {
+        const cur = byMonth.get(r.m) || { m: r.m, signups: 0, trips: 0, requests: 0, matches: 0 };
+        cur.signups += r.signups; cur.trips += r.trips; cur.requests += r.requests; cur.matches += r.matches;
+        byMonth.set(r.m, cur);
+      });
+      return [...byMonth.values()];
+    }
+    return MONTHLY.filter(r => r.region_id === regionId);
+  }
+
+  function getDomains(regionId) {
+    const rows = regionId === ALL_ID ? DOMAINS : DOMAINS.filter(r => r.region_id === regionId);
+    const byDomain = new Map();
+    rows.forEach(r => byDomain.set(r.domain, (byDomain.get(r.domain) || 0) + r.count));
+    return [...byDomain.entries()].map(([domain, count]) => ({ domain, count })).sort((a, b) => b.count - a.count);
+  }
+
+  function getKpi(regionId) {
+    if (regionId === ALL_ID) return sumKeys(KPI, KPI_KEYS);
+    return KPI.find(r => r.region_id === regionId) || sumKeys([], KPI_KEYS);
+  }
 
   /* ---------------- daily sparklines ---------------- */
   function sparkline(containerId, data, key, color, opts) {
@@ -514,7 +547,6 @@
     svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     svg.innerHTML = "";
 
-    // faint grid (3 horizontal lines)
     for (let i = 1; i <= 2; i++) {
       const y = padTop + (i / 3) * (h - padTop - padBottom);
       const line = document.createElementNS(NS, "line");
@@ -539,8 +571,7 @@
     line.setAttribute("stroke-linecap", "round");
     svg.appendChild(line);
 
-    // annotation callout (e.g. the bulk-post spike)
-    if (opts.annotateIndex != null) {
+    if (opts.annotateIndex != null && opts.annotateIndex >= 0) {
       const [ax, ay] = pts[opts.annotateIndex];
       const dot = document.createElementNS(NS, "circle");
       dot.setAttribute("cx", ax.toFixed(1)); dot.setAttribute("cy", ay.toFixed(1));
@@ -561,7 +592,6 @@
       svg.appendChild(label);
     }
 
-    // emphasized last point
     const [lx, ly] = pts[pts.length - 1];
     const lastDot = document.createElementNS(NS, "circle");
     lastDot.setAttribute("cx", lx.toFixed(1)); lastDot.setAttribute("cy", ly.toFixed(1));
@@ -569,7 +599,6 @@
     lastDot.setAttribute("fill", color);
     svg.appendChild(lastDot);
 
-    // hit targets for tooltip
     pts.forEach((p, i) => {
       const hit = document.createElementNS(NS, "circle");
       hit.setAttribute("cx", p[0].toFixed(1)); hit.setAttribute("cy", p[1].toFixed(1));
@@ -581,33 +610,45 @@
     });
   }
 
-  const trendRow = document.getElementById("trend-row");
-  const trends = [
-    { key: "signups", title: "Signups", color: "#2E4BD6", total: DAILY.reduce((a,d)=>a+d.signups,0) },
-    { key: "trips", title: "Trips posted", color: "#1E9E6C", total: DAILY.reduce((a,d)=>a+d.trips,0) },
-    { key: "requests", title: "Ride requests", color: "#DC9A2E", total: DAILY.reduce((a,d)=>a+d.requests,0), annotateIndex: DAILY.findIndex(d=>d.d==="08-13"), annotateLabel: "bulk picker" },
-  ];
-  trends.forEach((t, idx) => {
-    const id = "spark-" + idx;
-    const card = document.createElement("div");
-    card.className = "trend-card";
-    card.innerHTML = `
-      <div class="trend-top">
-        <span class="trend-title">${t.title}</span>
-        <span class="trend-total num">${fmt(t.total)}</span>
-      </div>
-      <svg id="${id}" class="trend-svg"></svg>
-      <div class="trend-axis"><span>${DAILY[0].d}</span><span>${DAILY[DAILY.length-1].d}</span></div>
-    `;
-    trendRow.appendChild(card);
-  });
-  trends.forEach((t, idx) => {
-    sparkline("spark-" + idx, DAILY, t.key, t.color, t.annotateIndex >= 0 ? {annotateIndex: t.annotateIndex, annotateLabel: t.annotateLabel} : {});
-  });
+  function renderTrends(daily, regionId) {
+    const trendRow = document.getElementById("trend-row");
+    trendRow.innerHTML = "";
+    // The bulk-picker spike is a real DFW event on 08-13 - only annotate it
+    // where it actually happened (DFW itself, or "All" since DFW feeds into
+    // the sum), not on every region's zero-value row for that date.
+    const showAnnotation = regionId === "dfw" || regionId === ALL_ID;
+    const spikeIndex = showAnnotation ? daily.findIndex(d => d.d === "08-13") : -1;
+    const trends = [
+      { key: "signups", title: "Signups", color: "#2E4BD6", total: daily.reduce((a, d) => a + d.signups, 0) },
+      { key: "trips", title: "Trips posted", color: "#1E9E6C", total: daily.reduce((a, d) => a + d.trips, 0) },
+      { key: "requests", title: "Ride requests", color: "#DC9A2E", total: daily.reduce((a, d) => a + d.requests, 0), annotateIndex: spikeIndex, annotateLabel: "bulk picker" },
+    ];
+    trends.forEach((t, idx) => {
+      const id = "spark-" + idx;
+      const card = document.createElement("div");
+      card.className = "trend-card";
+      card.innerHTML = `
+        <div class="trend-top">
+          <span class="trend-title">${t.title}</span>
+          <span class="trend-total num">${fmt(t.total)}</span>
+        </div>
+        <svg id="${id}" class="trend-svg"></svg>
+        <div class="trend-axis"><span>${daily[0].d}</span><span>${daily[daily.length - 1].d}</span></div>
+      `;
+      trendRow.appendChild(card);
+    });
+    trends.forEach((t, idx) => {
+      sparkline("spark-" + idx, daily, t.key, t.color, { annotateIndex: t.annotateIndex, annotateLabel: t.annotateLabel });
+    });
+  }
 
   /* ---------------- monthly grouped bars ---------------- */
-  (function monthlyChart() {
+  function renderMonthlyChart(monthly) {
     const svg = document.getElementById("monthly-svg");
+    const legend = document.getElementById("monthly-legend");
+    svg.innerHTML = "";
+    legend.innerHTML = "";
+
     const metrics = [
       { key: "signups", color: "#2E4BD6", label: "Signups" },
       { key: "requests", color: "#DC9A2E", label: "Ride requests" },
@@ -615,20 +656,18 @@
       { key: "matches", color: "#C7405A", label: "Matches" },
     ];
     const w = 560, h = 170, padBottom = 24, padTop = 10;
-    const groupW = w / MONTHLY.length;
+    const groupW = w / monthly.length;
     const barGap = 6;
     const barW = (groupW - barGap * (metrics.length + 1)) / metrics.length;
-    const maxVal = Math.max(1, ...MONTHLY.flatMap(m => metrics.map(mt => m[mt.key])));
+    const maxVal = Math.max(1, ...monthly.flatMap(m => metrics.map(mt => m[mt.key])));
 
-    svg.innerHTML = "";
-    // baseline
     const base = document.createElementNS(NS, "line");
     base.setAttribute("x1", 0); base.setAttribute("x2", w);
     base.setAttribute("y1", h - padBottom); base.setAttribute("y2", h - padBottom);
     base.setAttribute("stroke", "var(--border)");
     svg.appendChild(base);
 
-    MONTHLY.forEach((m, gi) => {
+    monthly.forEach((m, gi) => {
       const groupX = gi * groupW;
       metrics.forEach((mt, mi) => {
         const val = m[mt.key];
@@ -658,21 +697,25 @@
       svg.appendChild(label);
     });
 
-    const legend = document.getElementById("monthly-legend");
+    const lastMonth = monthly[monthly.length - 1];
     metrics.forEach(mt => {
-      const jul = MONTHLY[0][mt.key], aug = MONTHLY[1][mt.key];
       const row = document.createElement("div");
       row.className = "legend-item";
-      row.innerHTML = `<span class="legend-swatch" style="background:${mt.color}"></span>${mt.label}<strong>${fmt(aug)}</strong>`;
+      row.innerHTML = `<span class="legend-swatch" style="background:${mt.color}"></span>${mt.label}<strong>${fmt(lastMonth[mt.key])}</strong>`;
       legend.appendChild(row);
     });
-  })();
+  }
 
   /* ---------------- domain bars ---------------- */
-  (function domainList() {
+  function renderDomainList(domains) {
     const container = document.getElementById("domain-list");
-    const max = Math.max(...DOMAINS.map(d => d.count));
-    DOMAINS.forEach(d => {
+    container.innerHTML = "";
+    if (domains.length === 0) {
+      container.innerHTML = '<p class="section-note">No signups yet.</p>';
+      return;
+    }
+    const max = Math.max(...domains.map(d => d.count));
+    domains.forEach(d => {
       const pct = (d.count / max) * 100;
       const row = document.createElement("div");
       row.className = "domain-row";
@@ -683,15 +726,16 @@
       `;
       container.appendChild(row);
     });
-  })();
+  }
 
   /* ---------------- match funnel ---------------- */
-  (function funnel() {
+  function renderFunnel(kpi) {
     const stack = document.getElementById("funnel-stack");
+    stack.innerHTML = "";
     const rows = [
-      { label: "Pending", value: KPI.matches_pending, color: "var(--accent-warm)", attn: false },
-      { label: "Confirmed", value: KPI.matches_confirmed, color: "var(--positive)", attn: KPI.matches_confirmed === 0 },
-      { label: "Declined", value: KPI.matches_declined, color: "var(--critical)", attn: false },
+      { label: "Pending", value: kpi.matches_pending, color: "var(--accent-warm)", attn: false },
+      { label: "Confirmed", value: kpi.matches_confirmed, color: "var(--positive)", attn: kpi.matches_confirmed === 0 },
+      { label: "Declined", value: kpi.matches_declined, color: "var(--critical)", attn: false },
     ];
     rows.forEach(r => {
       const row = document.createElement("div");
@@ -702,7 +746,71 @@
       `;
       stack.appendChild(row);
     });
-    document.getElementById("funnel-foot").textContent =
-      "0 confirmed so far — worth watching whether the new candidate-visibility banner (shipped after the bulk-post spike) improves this.";
-  })();
+    document.getElementById("funnel-foot").textContent = kpi.matches_confirmed === 0
+      ? "0 confirmed so far - worth watching whether the candidate-visibility banner shipped after the bulk-post spike improves this."
+      : `${fmt(kpi.matches_confirmed)} confirmed so far.`;
+  }
+
+  /* ---------------- kpi row ---------------- */
+  function renderKpiRow(kpi) {
+    const kpiRow = document.getElementById("kpi-row");
+    kpiRow.innerHTML = "";
+    const activationPct = kpi.real_signups > 0 ? Math.round((kpi.activated / kpi.real_signups) * 100) : 0;
+    const kpis = [
+      { label: "Real signups", value: fmt(kpi.real_signups), sub: `+${fmt(kpi.signups_7d)} last 7 days` },
+      { label: "Trips posted", value: fmt(kpi.total_trips), sub: `${fmt(kpi.trips_active_upcoming)} active upcoming` },
+      { label: "Ride requests", value: fmt(kpi.total_requests), sub: `${fmt(kpi.requests_active_upcoming)} active upcoming` },
+      { label: "Activation", value: activationPct + "%", sub: `${fmt(kpi.activated)} of ${fmt(kpi.real_signups)} took an action` },
+      { label: "Matches pending", value: fmt(kpi.matches_pending), sub: "awaiting confirm/decline", chip: kpi.matches_pending > 0 ? { cls: "warn", text: "needs attention" } : null },
+      { label: "Matches confirmed", value: fmt(kpi.matches_confirmed), sub: "since launch", chip: kpi.matches_confirmed === 0 ? { cls: "warn", text: "0 so far" } : { cls: "good", text: "confirming" } },
+    ];
+    kpis.forEach(k => {
+      const card = document.createElement("div");
+      card.className = "kpi-card";
+      card.innerHTML = `
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value num">${k.value}</div>
+        <div class="kpi-sub">${k.sub}</div>
+        ${k.chip ? `<div class="chip ${k.chip.cls}">${k.chip.text}</div>` : ""}
+      `;
+      kpiRow.appendChild(card);
+    });
+  }
+
+  /* ---------------- top-level render + region switcher ---------------- */
+  function render(regionId) {
+    const daily = getDaily(regionId);
+    const monthly = getMonthly(regionId);
+    const domains = getDomains(regionId);
+    const kpi = getKpi(regionId);
+    const regionName = regionId === ALL_ID ? "All cities" : ((REGIONS.find(r => r.id === regionId) || {}).name || regionId);
+
+    const emptyState = document.getElementById("empty-state");
+    const mainContent = document.getElementById("main-content");
+
+    if (regionId !== ALL_ID && kpi.real_signups === 0) {
+      mainContent.style.display = "none";
+      emptyState.style.display = "block";
+      emptyState.querySelector("[data-empty-city]").textContent = regionName;
+      return;
+    }
+    mainContent.style.display = "";
+    emptyState.style.display = "none";
+
+    renderKpiRow(kpi);
+    renderTrends(daily, regionId);
+    renderMonthlyChart(monthly);
+    renderDomainList(domains);
+    renderFunnel(kpi);
+  }
+
+  document.getElementById("as-of").innerHTML =
+    `Snapshot as of <strong>Aug 19, 2026</strong><br>Builder's own test accounts excluded throughout`;
+
+  const regionSelect = document.getElementById("region-select");
+  regionSelect.innerHTML = `<option value="${ALL_ID}">All cities</option>` +
+    REGIONS.map(r => `<option value="${r.id}">${r.name}</option>`).join("");
+  regionSelect.addEventListener("change", () => render(regionSelect.value));
+
+  render(ALL_ID);
 </script>
