@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 
+import AppHero from './AppHero';
 import { trackError, trackEvent } from '../lib/analytics';
 import { requestOtp, supabase } from '../lib/supabase';
 
@@ -59,6 +60,7 @@ export default function SignInScreen() {
   if (step === 'email') {
     return (
       <View style={styles.container}>
+        <AppHero compact />
         <Text style={styles.title}>Sign in</Text>
         <Text style={styles.subtitle}>Enter your email</Text>
         <TextInput
@@ -89,6 +91,7 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.container}>
+      <AppHero compact />
       <Text style={styles.title}>Enter your code</Text>
       <Text style={styles.subtitle}>We sent a code to {email}</Text>
       <TextInput

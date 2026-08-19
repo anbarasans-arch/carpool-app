@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import AppHero from './AppHero';
 import { REGIONS } from '../config/regions';
 
 type Props = {
@@ -12,7 +13,9 @@ type Props = {
 // other code changes.
 export default function CityPickerScreen({ onSelect }: Props) {
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
+      <AppHero />
+      <View style={styles.divider} />
       <Text style={styles.title}>Where do you carpool?</Text>
       <Text style={styles.subtitle}>Pick your city to get started.</Text>
       <View style={styles.list}>
@@ -22,20 +25,27 @@ export default function CityPickerScreen({ onSelect }: Props) {
           </Pressable>
         ))}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 40,
     gap: 12,
   },
+  divider: {
+    width: 40,
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 8,
+  },
   title: {
-    fontSize: 24,
+    fontSize: 19,
     fontWeight: '600',
   },
   subtitle: {
