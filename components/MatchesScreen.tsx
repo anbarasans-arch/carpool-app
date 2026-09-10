@@ -11,6 +11,8 @@ type MatchRow = {
   proposed_by: string;
   suggested_cost_split: number | null;
   created_at: string;
+  driver_ride_confirmed: boolean | null;
+  rider_ride_confirmed: boolean | null;
   trips: { driver_id: string; departure_time: string } | null;
   ride_requests: { rider_id: string; desired_time_start: string; desired_time_end: string } | null;
 };
@@ -43,7 +45,7 @@ export default function MatchesScreen() {
     const { data, error: fetchError } = await supabase
       .from('matches')
       .select(
-        'id, status, proposed_by, suggested_cost_split, created_at, trips(driver_id, departure_time), ride_requests(rider_id, desired_time_start, desired_time_end)',
+        'id, status, proposed_by, suggested_cost_split, created_at, driver_ride_confirmed, rider_ride_confirmed, trips(driver_id, departure_time), ride_requests(rider_id, desired_time_start, desired_time_end)',
       )
       .returns<MatchRow[]>();
 
@@ -90,6 +92,17 @@ export default function MatchesScreen() {
         .catch(() => {});
     }
 
+    load();
+  }
+
+  async function confirmRide(matchId: string, happened: boolean) {
+    const { error: rpcError } = await supabase.rpc('confirm_ride_completion', { match_id: matchId, happened });
+    if (rpcError) {
+      setError(rpcError.message);
+      trackError('MatchesScreen.confirmRide', rpcError.message, { matchId, happened });
+      return;
+    }
+    trackEvent('ride_completion_confirmed', { happened });
     load();
   }
 
@@ -140,6 +153,10 @@ export default function MatchesScreen() {
                 m.status === 'pending' && !!m.trips && new Date(m.trips.departure_time).getTime() < Date.now();
               const displayStatus = isExpired ? 'expired' : m.status;
               const canRespond = m.status === 'pending' && !isProposer && !isExpired;
+              const hasDeparted = !!m.trips && new Date(m.trips.departure_time).getTime() < Date.now();
+              const myRideAnswer = isDriver ? m.driver_ride_confirmed : m.rider_ride_confirmed;
+              const theirRideAnswer = isDriver ? m.rider_ride_confirmed : m.driver_ride_confirmed;
+              const needsRideConfirmation = m.status === 'confirmed' && hasDeparted && myRideAnswer == null;
               const isOpen = expandedIds.has(m.id);
               const hasDetails = m.suggested_cost_split != null || (m.status === 'confirmed' && contacts[m.id]);
               return (
@@ -170,6 +187,31 @@ export default function MatchesScreen() {
                       <Pressable style={styles.declineButton} onPress={() => respond(m.id, 'declined')}>
                         <Text style={styles.declineButtonText}>Decline</Text>
                       </Pressable>
+                    </View>
+                  ) : null}
+                  {needsRideConfirmation ? (
+                    <View style={styles.rideCheckIn}>
+                      <Text style={styles.rowSubtext}>Did this ride happen?</Text>
+                      <View style={styles.actions}>
+                        <Pressable style={styles.confirmButton} onPress={() => confirmRide(m.id, true)}>
+                          <Text style={styles.confirmButtonText}>Yes</Text>
+                        </Pressable>
+                        <Pressable style={styles.declineButton} onPress={() => confirmRide(m.id, false)}>
+                          <Text style={styles.declineButtonText}>No</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : m.status === 'confirmed' && hasDeparted ? (
+                    <View style={styles.rideCheckIn}>
+                      <Text style={styles.rowSubtext}>
+                        You said: {myRideAnswer ? 'happened' : "didn't happen"}
+                        {theirRideAnswer != null
+                          ? ` · ${isDriver ? 'Rider' : 'Driver'} said: ${theirRideAnswer ? 'happened' : "didn't happen"}`
+                          : ` · waiting on ${isDriver ? 'rider' : 'driver'}`}
+                      </Text>
+                      {theirRideAnswer != null && theirRideAnswer !== myRideAnswer ? (
+                        <Text style={styles.mismatch}>You two disagree on whether this ride happened</Text>
+                      ) : null}
                     </View>
                   ) : null}
                   {isOpen && hasDetails ? (
@@ -277,6 +319,16 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingBottom: 12,
+  },
+  rideCheckIn: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    gap: 6,
+  },
+  mismatch: {
+    fontSize: 12,
+    color: '#c00',
+    fontWeight: '600',
   },
   confirmButton: {
     backgroundColor: '#111',
