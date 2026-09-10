@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import CityPickerScreen from './components/CityPickerScreen';
+import FeedbackPopup from './components/FeedbackPopup';
 import MatchesScreen from './components/MatchesScreen';
 import MyRidesScreen from './components/MyRidesScreen';
 import PostTripScreen from './components/PostTripScreen';
@@ -36,12 +37,34 @@ export default function App() {
   const [regionId, setRegionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>(getInitialTab);
+  const [showFeedback, setShowFeedback] = useState(false);
   const regionIdRef = useRef<string | null>(null);
   regionIdRef.current = regionId;
+  const feedbackCheckedRef = useRef(false);
 
   function handleTabChange(nextTab: Tab) {
     setTab(nextTab);
     trackEvent('tab_viewed', { tab: nextTab });
+  }
+
+  // Feedback popup shows roughly 1 in every 7 app opens, not every time -
+  // annoying otherwise. The count lives on the user's profile (not local
+  // storage) so it's consistent across devices. Called both from the
+  // cold-load path (already signed in) and the SIGNED_IN event (freshly
+  // signed in this session) - same timing gap set_home_region already
+  // works around below, since a fresh sign-in never has a session at the
+  // initial getSession() check.
+  async function checkFeedbackPrompt() {
+    // Guards against the RPC firing twice for one app load - supabase-js
+    // can emit more than one SIGNED_IN-ish event in a row (e.g. session
+    // restore alongside an explicit sign-in), and both the cold-load path
+    // and the auth-state-change listener can independently reach this.
+    if (feedbackCheckedRef.current) return;
+    feedbackCheckedRef.current = true;
+    const { data: promptCount } = await supabase.rpc('increment_feedback_prompt_count');
+    if (typeof promptCount === 'number' && promptCount > 0 && promptCount % 7 === 0) {
+      setShowFeedback(true);
+    }
   }
 
   function handleCitySelect(nextRegionId: string) {
@@ -60,6 +83,7 @@ export default function App() {
       setSession(currentSession);
       if (currentSession) {
         identifyUser(currentSession.user.id);
+        checkFeedbackPrompt();
       }
 
       // Home region source of truth is the user's profile once signed in
@@ -103,6 +127,9 @@ export default function App() {
         // the local pick once a session actually appears.
         if (event === 'SIGNED_IN' && regionIdRef.current) {
           supabase.rpc('set_home_region', { new_region_id: regionIdRef.current });
+        }
+        if (event === 'SIGNED_IN') {
+          checkFeedbackPrompt();
         }
       } else {
         resetAnalyticsUser();
@@ -175,6 +202,7 @@ export default function App() {
       ) : (
         <MyRidesScreen />
       )}
+      <FeedbackPopup visible={showFeedback} onClose={() => setShowFeedback(false)} />
       <StatusBar style="auto" />
     </View>
   );
