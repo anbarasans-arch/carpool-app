@@ -3,15 +3,26 @@
 `template.html` is the usage dashboard published at:
 https://claude.ai/code/artifact/aa384c84-b489-436b-90f8-1bf3fd27d566
 
-A daily scheduled routine ("Carpool Pulse daily refresh", claude.ai/code/routines)
-regenerates it automatically (~6:07pm Central) by calling the `dashboard-metrics`
-Edge Function, splicing the result into `template.html`'s `REGIONS`, `DAILY`,
-`MONTHLY`, `DOMAINS`, and `KPI` JS consts (leave everything else - styles,
-layout, embedded font, chart-drawing JS, the empty-state panel - untouched),
-updating the "Snapshot as of" date, and republishing to the same URL above
-via the Artifact tool. See the routine's own prompt (claude.ai/code/routines)
-for the exact splice script it runs - keep this doc and that prompt in sync
-if the shape ever changes again.
+**Refreshed on request, not automatically.** A daily scheduled routine
+("Carpool Pulse daily refresh") was set up 2026-08-15 to do this
+automatically, but was disabled 2026-09-10 after discovering it had been
+silently failing every single night since launch: Claude Code cloud
+routines run in a sandboxed environment whose egress proxy only allows a
+fixed allowlist of hosts (Anthropic's own infra, npm, pypi, jsr,
+crates.io) - `supabase.co` was never reachable from it. Every run's first
+`curl` was rejected by the sandbox's own network policy (not a Supabase or
+credentials problem), and the routine correctly stopped without touching
+anything, per its own instructions - so the dashboard silently sat on its
+2026-08-19 snapshot for three weeks despite the routine reporting
+"success" nightly. The routine still exists (disabled, not deleted -
+claude.ai/code/routines) with the full splice script in its prompt if
+automation is revisited later (e.g. via a GitHub Actions workflow, which
+runs on normal unrestricted infrastructure, doing the fetch+commit and
+letting a routine merely publish afterward).
+
+To refresh manually: fetch `dashboard-metrics` (see below), then run the
+splice script from the routine's saved prompt (claude.ai/code/routines) or
+this doc's history, and publish via the Artifact tool to the URL above.
 
 ## Where the numbers actually come from
 
