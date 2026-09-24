@@ -12,7 +12,7 @@ import PostTripScreen from './components/PostTripScreen';
 import RequestRideScreen from './components/RequestRideScreen';
 import SignInScreen from './components/SignInScreen';
 import { getRegion } from './config/regions';
-import { identifyUser, resetAnalyticsUser, trackEvent } from './lib/analytics';
+import { identifyUser, resetAnalyticsUser, trackError, trackEvent } from './lib/analytics';
 import { supabase } from './lib/supabase';
 
 type Tab = 'post' | 'request' | 'matches' | 'rides';
@@ -67,12 +67,25 @@ export default function App() {
     }
   }
 
+  // A silent failure here previously went unnoticed for weeks: this RPC has
+  // no return value the caller checks, so any rejection (network drop,
+  // unexpected server error) just vanished, leaving home_region_id stuck at
+  // null with zero visibility - a DB-side trigger now backfills it from a
+  // user's actual posted activity as a structural safety net (see
+  // 20260923050000_backfill_and_safety_net_home_region.sql), but this still
+  // logs failures so a recurrence shows up in PostHog instead of nowhere.
+  function persistHomeRegion(nextRegionId: string) {
+    supabase.rpc('set_home_region', { new_region_id: nextRegionId }).then(({ error }) => {
+      if (error) trackError('setHomeRegion', error.message, { region_id: nextRegionId });
+    });
+  }
+
   function handleCitySelect(nextRegionId: string) {
     setRegionId(nextRegionId);
     AsyncStorage.setItem(REGION_STORAGE_KEY, nextRegionId).catch(() => {});
     trackEvent('region_selected', { region_id: nextRegionId });
     if (session) {
-      supabase.rpc('set_home_region', { new_region_id: nextRegionId });
+      persistHomeRegion(nextRegionId);
     }
   }
 
@@ -109,7 +122,7 @@ export default function App() {
         setRegionId(resolvedRegionId);
         await AsyncStorage.setItem(REGION_STORAGE_KEY, resolvedRegionId);
         if (currentSession && !fromProfile) {
-          supabase.rpc('set_home_region', { new_region_id: resolvedRegionId });
+          persistHomeRegion(resolvedRegionId);
         }
       }
 
@@ -126,7 +139,7 @@ export default function App() {
         // profile row doesn't exist yet when handleCitySelect runs, so push
         // the local pick once a session actually appears.
         if (event === 'SIGNED_IN' && regionIdRef.current) {
-          supabase.rpc('set_home_region', { new_region_id: regionIdRef.current });
+          persistHomeRegion(regionIdRef.current);
         }
         if (event === 'SIGNED_IN') {
           checkFeedbackPrompt();
