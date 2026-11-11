@@ -1,0 +1,45 @@
+name: CI
+
+# Runs on every push to master and on every pull request (including the
+# weekly Dependabot ones). Two checks: the TypeScript typecheck, and the same
+# web build Vercel runs - so a change that doesn't compile or bundle is
+# flagged here instead of being discovered after it's live.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Placeholder values only: EXPO_PUBLIC_* vars are baked into the bundle
+      # at build time but the build never calls any service, so no real keys
+      # are needed (or wanted) in GitHub. Vercel builds with the real ones.
+      - name: Build web app
+        run: npx expo export --platform web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          EXPO_PUBLIC_MAPTILER_KEY: ci-placeholder
+          EXPO_PUBLIC_LOCATIONIQ_KEY: ci-placeholder

@@ -1,0 +1,42 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # One PR per week for all the safe minor/patch bumps (maplibre-gl,
+      # supabase-js, posthog-js, typescript, ...) instead of one per package.
+      # Major versions still arrive as their own separate PRs.
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # React, React DOM and React Native must match each other exactly, and
+      # Expo pins the combination that works for a given SDK. Bumping any one
+      # alone breaks the app (e.g. "Incompatible React versions"). These move
+      # together when the Expo SDK is upgraded (npx expo install --fix), not
+      # via Dependabot.
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      # Expo-managed packages: patch releases inside the current SDK are fine,
+      # but minor/major ones are SDK upgrades - same reasoning as above.
+      - dependency-name: expo
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: expo-*
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "@expo/*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: react-native-web
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      # Pinned to the exact version the Expo SDK validates.
+      - dependency-name: "@react-native-async-storage/async-storage"
+
+  # Keeps the actions used by .github/workflows/ci.yml current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

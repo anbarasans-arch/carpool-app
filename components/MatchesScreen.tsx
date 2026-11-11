@@ -67,7 +67,7 @@ export default function MatchesScreen() {
         return [id, email as string | null] as const;
       }),
     );
-    setContacts(Object.fromEntries(entries.filter(([, email]) => !!email)));
+    setContacts(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => !!entry[1])));
   }
 
   useEffect(() => {
