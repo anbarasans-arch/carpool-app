@@ -9,3 +9,6 @@ web-build/
 .vercel
 *.log
 .DS_Store
+dist-e2e/
+test-results/
+playwright-report/

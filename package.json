@@ -17,6 +17,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/react": "~19.2.2",
     "supabase": "^2.110.0",
     "typescript": "~6.0.3"
@@ -26,7 +27,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:e2e": "expo export --platform web --output-dir dist-e2e --clear",
+    "test:e2e": "playwright test"
   },
   "private": true
 }

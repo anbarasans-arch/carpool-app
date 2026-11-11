@@ -43,3 +43,54 @@ jobs:
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
           EXPO_PUBLIC_MAPTILER_KEY: ci-placeholder
           EXPO_PUBLIC_LOCATIONIQ_KEY: ci-placeholder
+
+  # Opens the built app in a real browser and checks the map actually draws
+  # (e2e/map.spec.ts). Unlike the job above, this one needs the real MapTiler
+  # key, because it loads real map tiles - that's the thing that can break.
+  # The key is public by nature (it ships inside the app to every visitor),
+  # stored as the MAPTILER_KEY secret. Dependabot PRs read secrets from a
+  # separate store, so it must be set under Dependabot secrets as well.
+  map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check the MapTiler key is available
+        env:
+          KEY: ${{ secrets.MAPTILER_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::MAPTILER_KEY is not set. Add it under Settings > Secrets and variables > Actions (and under Dependabot, so Dependabot PRs can run this test)."
+            exit 1
+          fi
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Build web app for the browser test
+        run: npx expo export --platform web --output-dir dist-e2e
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          EXPO_PUBLIC_LOCATIONIQ_KEY: ci-placeholder
+          EXPO_PUBLIC_MAPTILER_KEY: ${{ secrets.MAPTILER_KEY }}
+
+      - name: Run the map test
+        run: npx playwright test
+
+      - name: Keep the report if it failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: map-test-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
