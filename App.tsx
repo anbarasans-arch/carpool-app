@@ -138,11 +138,17 @@ export default function App() {
         // Covers picking a city before signing in for the first time - the
         // profile row doesn't exist yet when handleCitySelect runs, so push
         // the local pick once a session actually appears.
-        if (event === 'SIGNED_IN' && regionIdRef.current) {
-          persistHomeRegion(regionIdRef.current);
-        }
+        //
+        // Deferred with setTimeout on purpose: supabase-js is still inside
+        // its sign-in flow while this callback runs, so an RPC fired
+        // synchronously here goes out without the new session's token and
+        // fails with a 401 (what left ~70 users with no home city). Letting
+        // the callback return first means the call is authenticated.
         if (event === 'SIGNED_IN') {
-          checkFeedbackPrompt();
+          setTimeout(() => {
+            if (regionIdRef.current) persistHomeRegion(regionIdRef.current);
+            checkFeedbackPrompt();
+          }, 0);
         }
       } else {
         resetAnalyticsUser();
