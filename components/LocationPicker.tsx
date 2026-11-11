@@ -53,18 +53,25 @@ export default function LocationPicker({ label, value, onChange, region }: Props
       // so fall back to the named exports either way.
       const maplibregl = mod.default ?? mod;
 
+      // The CDN files must be the exact version bundled here: the main
+      // thread and the worker talk over a versioned protocol, and a mismatch
+      // draws only the background + marker (no tiles, "e[n] is not iterable").
+      // A floating "@6" tag did exactly that once unpkg's @6 moved to 6.17.0
+      // while 6.0.0 was installed, so read the version from the library.
+      const cdnBase = `https://unpkg.com/maplibre-gl@${maplibregl.getVersion()}/dist`;
+
       if (!document.getElementById('maplibre-gl-css')) {
         const link = document.createElement('link');
         link.id = 'maplibre-gl-css';
         link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css';
+        link.href = `${cdnBase}/maplibre-gl.css`;
         document.head.appendChild(link);
       }
 
       // Metro serves maplibre-gl's own worker chunk as an HTML 404 page
       // instead of the real script, so the map silently never loads (no
       // error event - just stuck). Point it at a matching CDN copy instead.
-      maplibregl.setWorkerUrl('https://unpkg.com/maplibre-gl@6/dist/maplibre-gl-worker.mjs');
+      maplibregl.setWorkerUrl(`${cdnBase}/maplibre-gl-worker.mjs`);
 
       const currentValue = valueRef.current;
       const map = new maplibregl.Map({
